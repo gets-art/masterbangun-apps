@@ -36,12 +36,18 @@ export class ProjectsService {
   }
 
   async create(dto: CreateProjectDto) {
-    return this.prisma.project.create({ data: dto });
+    const data: any = { ...dto };
+    if (dto.startDate) data.startDate = new Date(dto.startDate);
+    if (dto.estimatedEndDate) data.estimatedEndDate = new Date(dto.estimatedEndDate);
+    return this.prisma.project.create({ data });
   }
 
   async update(id: string, dto: UpdateProjectDto) {
     await this.prisma.project.findUniqueOrThrow({ where: { id } });
-    return this.prisma.project.update({ where: { id }, data: dto });
+    const data: any = { ...dto };
+    if (dto.startDate) data.startDate = new Date(dto.startDate);
+    if (dto.estimatedEndDate) data.estimatedEndDate = new Date(dto.estimatedEndDate);
+    return this.prisma.project.update({ where: { id }, data });
   }
 
   async assignUser(projectId: string, userId: string) {

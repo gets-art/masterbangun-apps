@@ -363,7 +363,8 @@ textarea.input { resize: vertical; min-height: 80px; }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .table-header {
@@ -387,12 +388,14 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 td {
   padding: 13px 16px;
   border-bottom: 1px solid rgba(255,255,255,0.03);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 tr:last-child td { border-bottom: none; }
