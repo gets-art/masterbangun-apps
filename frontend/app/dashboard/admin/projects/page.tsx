@@ -8,6 +8,17 @@ export default function AdminProjects() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  
+  // Manage Team Modal State
+  const [manageProject, setManageProject] = useState<any>(null);
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [availableTukangs, setAvailableTukangs] = useState<any[]>([]);
+  const [projectTukangs, setProjectTukangs] = useState<any[]>([]);
+  const [projectUsers, setProjectUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState('');
+  const [selectedTukang, setSelectedTukang] = useState('');
+  const [loadingManage, setLoadingManage] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -36,6 +47,49 @@ export default function AdminProjects() {
       alert(err.response?.data?.message || 'Gagal menambahkan proyek');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openManageModal = async (project: any) => {
+    setManageProject(project);
+    setLoadingManage(true);
+    try {
+      const [uRes, tRes, ptRes, puRes] = await Promise.all([
+        api.get('/users'),
+        api.get('/tukang'),
+        api.get(`/projects/${project.id}/tukang`),
+        api.get(`/projects/${project.id}`)
+      ]);
+      setAvailableUsers(uRes.data);
+      setAvailableTukangs(tRes.data);
+      setProjectTukangs(ptRes.data);
+      setProjectUsers(puRes.data.userAssignments || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingManage(false);
+    }
+  };
+
+  const handleAssignUser = async () => {
+    if (!selectedUser) return;
+    try {
+      await api.post(`/projects/${manageProject.id}/assign-user`, { userId: selectedUser });
+      setSelectedUser('');
+      openManageModal(manageProject); // reload data
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal assign user');
+    }
+  };
+
+  const handleAssignTukang = async () => {
+    if (!selectedTukang) return;
+    try {
+      await api.post(`/projects/${manageProject.id}/assign-tukang`, { tukangId: selectedTukang });
+      setSelectedTukang('');
+      openManageModal(manageProject); // reload data
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal assign tukang');
     }
   };
 
@@ -90,6 +144,7 @@ export default function AdminProjects() {
                 <th>Mulai</th>
                 <th>Progress</th>
                 <th>Status</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -117,10 +172,13 @@ export default function AdminProjects() {
                       p.status === 'ON_HOLD' ? '⏸ Ditunda' : '✕ Dibatalkan'
                     }</span>
                   </td>
+                  <td>
+                    <button onClick={() => openManageModal(p)} className="badge badge-purple" style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>👥 Kelola Tim</button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">🏗️</div><div className="empty-state-title">Tidak ada proyek</div></div></td></tr>
+                <tr><td colSpan={6}><div className="empty-state"><div className="empty-state-icon">🏗️</div><div className="empty-state-title">Tidak ada proyek</div></div></td></tr>
               )}
             </tbody>
           </table>
@@ -168,6 +226,58 @@ export default function AdminProjects() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {manageProject && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setManageProject(null)}>
+          <div className="modal" style={{ maxWidth: 600 }}>
+            <div className="modal-title">👥 Kelola Tim: {manageProject.name}</div>
+            {loadingManage ? <p style={{ color: '#94a3b8' }}>Memuat data...</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                
+                {/* Section Assign User */}
+                <div style={{ background: '#1e212b', padding: 16, borderRadius: 8 }}>
+                  <h4 style={{ margin: '0 0 12px', color: '#f8fafc' }}>Staf & Pengurus (Mandor, Pengawas, dll)</h4>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <select className="input" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
+                      <option value="">Pilih User...</option>
+                      {availableUsers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+                    </select>
+                    <button onClick={handleAssignUser} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Tambahkan</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {projectUsers.map((pu: any) => (
+                      <span key={pu.userId} className="badge badge-info">{pu.user.name} ({pu.user.role})</span>
+                    ))}
+                    {projectUsers.length === 0 && <span style={{ color: '#64748b', fontSize: 13 }}>Belum ada pengurus</span>}
+                  </div>
+                </div>
+
+                {/* Section Assign Tukang */}
+                <div style={{ background: '#1e212b', padding: 16, borderRadius: 8 }}>
+                  <h4 style={{ margin: '0 0 12px', color: '#f8fafc' }}>Tukang Lapangan</h4>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <select className="input" value={selectedTukang} onChange={e => setSelectedTukang(e.target.value)}>
+                      <option value="">Pilih Tukang...</option>
+                      {availableTukangs.map(t => <option key={t.id} value={t.id}>{t.name} ({t.specialty})</option>)}
+                    </select>
+                    <button onClick={handleAssignTukang} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Tambahkan</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {projectTukangs.map((pt: any) => (
+                      <span key={pt.tukang.id} className="badge badge-success">{pt.tukang.name}</span>
+                    ))}
+                    {projectTukangs.length === 0 && <span style={{ color: '#64748b', fontSize: 13 }}>Belum ada tukang</span>}
+                  </div>
+                </div>
+
+              </div>
+            )}
+            <div className="modal-actions" style={{ marginTop: 24 }}>
+              <button type="button" className="btn-secondary" onClick={() => setManageProject(null)}>Tutup</button>
+            </div>
           </div>
         </div>
       )}

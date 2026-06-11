@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { ProjectStatus } from '@prisma/client';
 
 export class CreateProjectDto {
   @IsString()
@@ -25,4 +26,8 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   normalEndHour?: string;
+
+  @IsOptional()
+  @IsEnum(ProjectStatus)
+  status?: ProjectStatus;
 }
