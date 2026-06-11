@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  MANAGER
+  PENGAWAS
+  ADMIN_PROYEK
+  MANDOR
+  KONSUMEN
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REVISION
+}
+
+enum Weather {
+  CERAH
+  MENDUNG
+  HUJAN
+}
+
+enum Urgency {
+  RENDAH
+  SEDANG
+  TINGGI
+}
+
+enum Language {
+  ID
+  EN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String?
+  name         String
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  language     Language @default(ID)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  projectAssignments  ProjectUser[]
+  attendancesRecorded Attendance[]      @relation("MandorAttendance")
+  dailyReports        DailyReport[]
+  materialRequests    MaterialRequest[] @relation("MandorMaterial")
+  approvedMaterials   MaterialRequest[] @relation("ApprovedByUser")
+  approvedPhotos      ReportPhoto[]     @relation("ApprovedByUser")
+  deletedPhotos       ReportPhoto[]     @relation("DeletedByUser")
+  approvedOvertime    Attendance[]      @relation("OvertimeApprover")
+  auditLogs           AuditLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id                 String        @id @default(uuid())
+  name               String
+  address            String
+  gpsCoordinates     String?       @map("gps_coordinates")
+  startDate          DateTime      @map("start_date")
+  estimatedEndDate   DateTime?     @map("estimated_end_date")
+  progressPercentage Int           @default(0) @map("progress_percentage")
+  status             ProjectStatus @default(ACTIVE)
+  normalStartHour    String        @default("08:00") @map("normal_start_hour")
+  normalEndHour      String        @default("16:00") @map("normal_end_hour")
+  workDays           String        @default("1,2,3,4,5,6") @map("work_days")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  userAssignments  ProjectUser[]
+  tukangAssignments ProjectTukang[]
+  attendances      Attendance[]
+  dailyReports     DailyReport[]
+  materialRequests MaterialRequest[]
+
+  @@map("projects")
+}
+
+model Tukang {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  skill     String?
+  photoUrl  String?  @map("photo_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projectAssignments ProjectTukang[]
+  attendances        Attendance[]
+
+  @@map("tukang")
+}
+
+model ProjectUser {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@map("project_users")
+}
+
+model ProjectTukang {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  tukangId     String   @map("tukang_id")
+  assignedDate DateTime @default(now()) @map("assigned_date")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  project Project @relation(fields: [projectId], references: [id])
+  tukang  Tukang  @relation(fields: [tukangId], references: [id])
+
+  @@unique([projectId, tukangId])
+  @@map("project_tukang")
+}
+
+model Attendance {
+  id                 String         @id @default(uuid())
+  tukangId           String         @map("tukang_id")
+  projectId          String         @map("project_id")
+  mandorId           String         @map("mandor_id")
+  attendanceDate     String         @map("attendance_date")
+  clockIn            DateTime?      @map("clock_in")
+  clockOut           DateTime?      @map("clock_out")
+  photoInUrl         String?        @map("photo_in_url")
+  photoOutUrl        String?        @map("photo_out_url")
+  gpsIn              String?        @map("gps_in")
+  gpsOut             String?        @map("gps_out")
+  overtimeHours      Int            @default(0) @map("overtime_hours")
+  overtimeStatus     ApprovalStatus @default(PENDING) @map("overtime_status")
+  overtimeApprovedBy String?        @map("overtime_approved_by")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  tukang   Tukang  @relation(fields: [tukangId], references: [id])
+  project  Project @relation(fields: [projectId], references: [id])
+  mandor   User    @relation("MandorAttendance", fields: [mandorId], references: [id])
+  approver User?   @relation("OvertimeApprover", fields: [overtimeApprovedBy], references: [id])
+
+  @@unique([tukangId, projectId, attendanceDate])
+  @@map("attendances")
+}
+
+model DailyReport {
+  id                   String       @id @default(uuid())
+  projectId            String       @map("project_id")
+  pengawasId           String       @map("pengawas_id")
+  reportDate           String       @map("report_date")
+  weather              Weather
+  description          String
+  progressPercentage   Int          @map("progress_percentage")
+  notes                String?
+  materialAvailability String?      @map("material_availability")
+  status               ReportStatus @default(DRAFT)
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  project  Project       @relation(fields: [projectId], references: [id])
+  pengawas User          @relation(fields: [pengawasId], references: [id])
+  photos   ReportPhoto[]
+
+  @@unique([projectId, reportDate])
+  @@map("daily_reports")
+}
+
+model ReportPhoto {
+  id                String    @id @default(uuid())
+  dailyReportId     String    @map("daily_report_id")
+  photoUrl          String    @map("photo_url")
+  caption           String?
+  sharedToConsumer  Boolean   @default(false) @map("shared_to_consumer")
+  approvedByManager Boolean   @default(false) @map("approved_by_manager")
+  approvedBy        String?   @map("approved_by")
+  approvedAt        DateTime? @map("approved_at")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  deletedBy         String?   @map("deleted_by")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  dailyReport DailyReport @relation(fields: [dailyReportId], references: [id])
+  approver    User?       @relation("ApprovedByUser", fields: [approvedBy], references: [id])
+  deleter     User?       @relation("DeletedByUser", fields: [deletedBy], references: [id])
+
+  @@map("report_photos")
+}
+
+model MaterialRequest {
+  id            String         @id @default(uuid())
+  projectId     String         @map("project_id")
+  mandorId      String         @map("mandor_id")
+  materialName  String         @map("material_name")
+  quantity      Float
+  unit          String
+  urgency       Urgency        @default(SEDANG)
+  notes         String?
+  status        ApprovalStatus @default(PENDING)
+  approvedBy    String?        @map("approved_by")
+  approvedAt    DateTime?      @map("approved_at")
+  rejectionNote String?        @map("rejection_note")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  project  Project @relation(fields: [projectId], references: [id])
+  mandor   User    @relation("MandorMaterial", fields: [mandorId], references: [id])
+  approver User?   @relation("ApprovedByUser", fields: [approvedBy], references: [id])
+
+  @@map("material_requests")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  details   String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
