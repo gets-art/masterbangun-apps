@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
-
+import { getImageUrl } from '@/lib/utils';
 export default function KonsumenGallery() {
   const [projects, setProjects] = useState<any[]>([]);
   const [photos, setPhotos] = useState<any[]>([]);
@@ -70,16 +70,6 @@ export default function KonsumenGallery() {
           <div className="topbar-title">🖼️ Galeri Progres Proyek</div>
           <div className="topbar-sub">Foto dokumentasi yang sudah disetujui manager</div>
         </div>
-        {projects.length > 1 && (
-          <select
-            className="input"
-            style={{ width: 'auto' }}
-            value={selectedProject}
-            onChange={e => handleProjectChange(e.target.value)}
-          >
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        )}
       </div>
 
       <div className="page-content">
@@ -102,7 +92,7 @@ export default function KonsumenGallery() {
                 <div key={photo.id} className="photo-card">
                   {photo.photoUrl ? (
                     <img
-                      src={photo.photoUrl.startsWith('http') ? photo.photoUrl : `http://localhost:3000${photo.photoUrl}`}
+                      src={getImageUrl(photo.photoUrl)}
                       alt={photo.caption || 'Foto progres'}
                       style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block', background: '#0e1118' }}
                       onError={e => {

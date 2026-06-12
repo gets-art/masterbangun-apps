@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import { getImageUrl } from '@/lib/utils';
 
 export default function KonsumenDashboard() {
   const [projects, setProjects] = useState<any[]>([]);
@@ -51,16 +52,6 @@ export default function KonsumenDashboard() {
           <div className="topbar-title">🏠 Dashboard Pemilik</div>
           <div className="topbar-sub">Halo, {user?.name} — pantau progres rumah Anda</div>
         </div>
-        {projects.length > 1 && (
-          <select
-            className="input"
-            style={{ width: 'auto', padding: '8px 12px' }}
-            value={selectedProject?.id || ''}
-            onChange={e => handleProjectChange(e.target.value)}
-          >
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        )}
       </div>
 
       <div className="page-content">
@@ -140,7 +131,7 @@ export default function KonsumenDashboard() {
                   <div key={r.id} className="photo-card">
                     {r.photos && r.photos.length > 0 ? (
                       <img
-                        src={r.photos[0].photoUrl}
+                        src={getImageUrl(r.photos[0].photoUrl)}
                         alt="Progress"
                         className="photo-card-img"
                         style={{ display: 'block' }}

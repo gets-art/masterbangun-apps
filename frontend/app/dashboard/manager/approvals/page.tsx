@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-
+import { getImageUrl } from '@/lib/utils';
 export default function ManagerApprovals() {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const loadData = () => {
     setLoading(true);
@@ -98,12 +98,20 @@ export default function ManagerApprovals() {
                     }}>
                       <div style={{ position: 'relative' }}>
                         <img
-                          src={photo.photoUrl}
+                          src={getImageUrl(photo.photoUrl)}
                           alt={photo.caption || 'Foto lapangan'}
-                          style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', background: '#0e1118' }}
+                          onClick={() => setSelectedPhoto(getImageUrl(photo.photoUrl))}
+                          style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', background: '#0e1118', cursor: 'pointer' }}
                           onError={e => {
-                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>';
-                            (e.target as HTMLImageElement).style.background = '#1a1d27';
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent && !parent.querySelector('.err-msg')) {
+                              const msg = document.createElement('div');
+                              msg.className = 'err-msg';
+                              msg.style.cssText = 'height:180px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:13px;background:#0e1118;cursor:pointer;';
+                              msg.innerHTML = '📷 Foto tidak tersedia';
+                              parent.appendChild(msg);
+                            }
                           }}
                         />
                         {photo.approvedByManager && (
@@ -145,6 +153,20 @@ export default function ManagerApprovals() {
           </div>
         )}
       </div>
+
+      {selectedPhoto && (
+        <div className="modal-overlay" onClick={() => setSelectedPhoto(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 800, padding: 8, background: 'transparent', border: 'none', boxShadow: 'none' }}>
+            <img src={selectedPhoto} alt="Zoomed" style={{ width: '100%', height: 'auto', maxHeight: '85vh', objectFit: 'contain', borderRadius: 12 }} />
+            <button 
+              onClick={() => setSelectedPhoto(null)}
+              style={{ position: 'absolute', top: -16, right: -16, background: '#ef4444', color: '#fff', border: 'none', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

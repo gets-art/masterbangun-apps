@@ -33,16 +33,25 @@ export default function ManagerMaterials() {
           <table>
             <thead>
               <tr>
-                <th>Proyek</th><th>Item</th><th>Jumlah</th><th>Diminta Oleh</th><th>Status</th><th>Aksi</th>
+                <th>Proyek</th><th>Item</th><th>Jumlah</th><th>Urgensi</th><th>Diminta Oleh</th><th>Catatan</th><th>Status</th><th>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {materials.map(m => (
                 <tr key={m.id}>
-                  <td style={{ fontWeight: 500 }}>{m.project?.name}</td>
-                  <td>{m.itemName}</td>
-                  <td>{m.quantity}</td>
-                  <td style={{ color: '#94a3b8' }}>{m.requestedBy?.name}</td>
+                  <td style={{ fontWeight: 500 }}>{m.project?.name || '-'}</td>
+                  <td style={{ fontWeight: 600 }}>{m.materialName}</td>
+                  <td>{m.quantity} {m.unit}</td>
+                  <td>
+                    <span className={`badge ${
+                      m.urgency === 'TINGGI' ? 'badge-danger' : 
+                      m.urgency === 'SEDANG' ? 'badge-warning' : 'badge-info'
+                    }`}>{m.urgency}</span>
+                  </td>
+                  <td style={{ color: '#94a3b8' }}>{m.mandor?.name || '-'}</td>
+                  <td style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.notes}>
+                    {m.notes || '-'}
+                  </td>
                   <td>
                     <span className={`badge ${
                       m.status === 'APPROVED' ? 'badge-success' :
