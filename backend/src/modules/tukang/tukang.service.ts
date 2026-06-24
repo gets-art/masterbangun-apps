@@ -7,8 +7,10 @@ import { UpdateTukangDto } from './dto/update-tukang.dto';
 export class TukangService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(type?: string) {
-    const where = type ? { type: type as any } : {};
+  findAll(type?: string, archived: string = 'false') {
+    const isArchived = archived === 'true';
+    const where: any = { isArchived };
+    if (type) where.type = type as any;
     return this.prisma.tukang.findMany({ where, orderBy: { name: 'asc' } });
   }
 
@@ -37,6 +39,14 @@ export class TukangService {
 
   async update(id: string, dto: UpdateTukangDto) {
     await this.findOne(id);
-    return this.prisma.tukang.update({ where: { id }, data: dto });
+    return this.prisma.tukang.update({ where: { id }, data: dto as any });
+  }
+
+  async archive(id: string) {
+    return this.prisma.tukang.update({ where: { id }, data: { isArchived: true } });
+  }
+
+  async unarchive(id: string) {
+    return this.prisma.tukang.update({ where: { id }, data: { isArchived: false } });
   }
 }

@@ -18,21 +18,29 @@ export default function KonsumenDashboard() {
       if (pRes.data.length > 0) {
         const proj = pRes.data[0];
         setSelectedProject(proj);
-        const rRes = await api.get(`/daily-reports?projectId=${proj.id}`);
-        setReports(rRes.data);
-        const docRes = await api.get(`/documents/project/${proj.id}/consumer`);
-        setDocuments(docRes.data);
+        try {
+          const rRes = await api.get(`/daily-reports?projectId=${proj.id}`);
+          setReports(rRes.data);
+          const docRes = await api.get(`/documents/consumer/${proj.id}`);
+          setDocuments(docRes.data);
+        } catch (err) {
+          console.error("Failed fetching data", err);
+        }
       }
-    }).finally(() => setLoading(false));
+    }).catch(err => console.error(err)).finally(() => setLoading(false));
   }, []);
 
   const handleProjectChange = async (id: string) => {
     const proj = projects.find(p => p.id === id);
     setSelectedProject(proj);
-    const rRes = await api.get(`/daily-reports?projectId=${id}`);
-    setReports(rRes.data);
-    const docRes = await api.get(`/documents/project/${id}/consumer`);
-    setDocuments(docRes.data);
+    try {
+      const rRes = await api.get(`/daily-reports?projectId=${id}`);
+      setReports(rRes.data);
+      const docRes = await api.get(`/documents/consumer/${id}`);
+      setDocuments(docRes.data);
+    } catch (err) {
+      console.error("Failed fetching data", err);
+    }
   };
 
   if (loading) return (
@@ -116,10 +124,10 @@ export default function KonsumenDashboard() {
               ))}
             </div>
 
-            {/* Galeri foto */}
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700 }}>📸 Galeri Progres Harian</h3>
-              <span className="text-muted" style={{ fontSize: 13 }}>Foto yang sudah disetujui oleh manager</span>
+            {/* Galeri foto -> Timeline Proyek */}
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>⏳ Timeline Perjalanan Proyek</h3>
+              <span className="text-muted" style={{ fontSize: 13 }}>Rekam jejak progres dari awal hingga akhir</span>
             </div>
 
             {approvedReports.length === 0 ? (
@@ -131,40 +139,78 @@ export default function KonsumenDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="photo-grid">
-                {approvedReports.map((r) => (
-                  <div key={r.id} className="photo-card">
-                    {r.photos && r.photos.length > 0 ? (
-                      <img
-                        src={getImageUrl(r.photos[0].photoUrl)}
-                        alt="Progress"
-                        className="photo-card-img"
-                        style={{ display: 'block' }}
-                        onError={e => { (e.target as HTMLImageElement).parentElement!.innerHTML = '<div style="height:200px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:13px;">📷 Foto tidak tersedia</div>'; }}
-                      />
-                    ) : (
-                      <div className="photo-card-img">📷 Tidak ada foto</div>
-                    )}
-                    <div className="photo-card-body">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14 }}>
-                          {new Date(r.reportDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
-                        </span>
-                        <span className="text-primary" style={{ fontWeight: 700, fontSize: 15 }}>{r.progressPercentage}%</span>
+            <div style={{ paddingLeft: 24, paddingRight: 8, marginLeft: 12, borderLeft: '2px solid #334155', display: 'flex', flexDirection: 'column', gap: 32, paddingBottom: 24 }}>
+              
+              {/* Timeline Start */}
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: -33, top: 0, width: 16, height: 16, borderRadius: '50%', background: '#10b981', border: '3px solid #0f172a' }} />
+                <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>Mulai Pekerjaan</div>
+                <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 15 }}>
+                  {selectedProject.startDate ? new Date(selectedProject.startDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                </div>
+              </div>
+
+              {/* Laporan Harian Nodes */}
+              {approvedReports.map((r) => (
+                <div key={r.id} style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: -32, top: 2, width: 14, height: 14, borderRadius: '50%', background: '#f59e0b', border: '3px solid #0f172a' }} />
+                  <div style={{ background: '#1e293b', borderRadius: 12, border: '1px solid #334155', overflow: 'hidden', transition: 'transform 0.2s' }} className="card-hover">
+                    <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 15, color: '#f8fafc', marginBottom: 4 }}>
+                          {new Date(r.reportDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>👤 {r.pengawas?.name || 'Pengawas'}</span>
+                          <span>•</span>
+                          <span>{r.weather === 'CERAH' ? '☀️ Cerah' : r.weather === 'MENDUNG' ? '⛅ Mendung' : '🌧️ Hujan'}</span>
+                        </div>
                       </div>
-                      {r.description && (
-                        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, lineHeight: 1.5 }}>{r.description}</p>
-                      )}
-                      <div style={{ fontSize: 11, color: '#4b5563', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span>👤</span>
-                        <span>{r.pengawas?.name || 'Pengawas'}</span>
-                        <span>·</span>
-                        <span>{r.weather === 'CERAH' ? '☀️' : r.weather === 'MENDUNG' ? '⛅' : '🌧️'}</span>
+                      <div className="badge badge-warning" style={{ fontSize: 14, padding: '6px 12px' }}>
+                        Progress: {r.progressPercentage}%
                       </div>
                     </div>
+                    
+                    {r.description && (
+                      <div style={{ padding: '16px 20px', color: '#cbd5e1', fontSize: 14, lineHeight: 1.6, borderBottom: r.photos?.length ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        {r.description}
+                      </div>
+                    )}
+
+                    {r.photos && r.photos.length > 0 && (
+                      <div style={{ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                        {r.photos.map((p: any, i: number) => (
+                          <div key={i} style={{ aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: '#0f172a' }}>
+                            <img
+                              src={getImageUrl(p.photoUrl)}
+                              alt="Progress"
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={e => { (e.target as HTMLImageElement).parentElement!.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:13px;">📷 Error</div>'; }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
+                </div>
+              ))}
+
+              {/* Timeline End */}
+              <div style={{ position: 'relative', marginTop: 12 }}>
+                <div style={{ position: 'absolute', left: -33, top: 0, width: 16, height: 16, borderRadius: '50%', background: '#3b82f6', border: '3px solid #0f172a' }} />
+                <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>Target Selesai</div>
+                <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 15 }}>
+                  {selectedProject.estimatedEndDate ? new Date(selectedProject.estimatedEndDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Belum ditentukan'}
+                </div>
+                {selectedProject.extensionNote && (
+                  <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(245, 158, 11, 0.1)', color: '#fcd34d', borderRadius: 8, fontSize: 13, borderLeft: '3px solid #f59e0b', lineHeight: 1.5 }}>
+                    <strong style={{ color: '#f59e0b', display: 'block', marginBottom: 4 }}>Catatan Perubahan Jadwal:</strong>
+                    {selectedProject.extensionNote}
+                  </div>
+                )}
               </div>
+
+            </div>
             )}
             {/* Dokumen Proyek */}
             <div style={{ marginTop: 32, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

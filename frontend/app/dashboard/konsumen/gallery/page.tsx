@@ -18,6 +18,8 @@ export default function KonsumenGallery() {
         setSelectedProject(pid);
         await loadPhotos(pid);
       }
+    }).catch(err => {
+      console.error('Failed to load projects', err);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -28,20 +30,25 @@ export default function KonsumenGallery() {
       setPhotos(res.data);
     } catch {
       // Fallback: get approved daily reports with photos
-      const rRes = await api.get(`/daily-reports?projectId=${projectId}`);
-      const allPhotos: any[] = [];
-      rRes.data.filter((r: any) => r.status === 'APPROVED' && r.photos?.length > 0).forEach((r: any) => {
-        r.photos.forEach((p: any) => {
-          allPhotos.push({
-            ...p,
-            reportDate: r.reportDate,
-            progressPercentage: r.progressPercentage,
-            pengawasName: r.pengawas?.name,
-            projectName: r.project?.name,
+      try {
+        const rRes = await api.get(`/daily-reports?projectId=${projectId}`);
+        const allPhotos: any[] = [];
+        rRes.data.filter((r: any) => r.status === 'APPROVED' && r.photos?.length > 0).forEach((r: any) => {
+          r.photos.forEach((p: any) => {
+            allPhotos.push({
+              ...p,
+              reportDate: r.reportDate,
+              progressPercentage: r.progressPercentage,
+              pengawasName: r.pengawas?.name,
+              projectName: r.project?.name,
+            });
           });
         });
-      });
-      setPhotos(allPhotos);
+        setPhotos(allPhotos);
+      } catch (err) {
+        console.error('Failed to load photos from fallback', err);
+        setPhotos([]);
+      }
     }
   };
 

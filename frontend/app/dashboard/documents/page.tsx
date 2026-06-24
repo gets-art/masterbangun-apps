@@ -22,6 +22,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const getAllowedCategories = () => {
@@ -60,6 +61,8 @@ export default function DocumentsPage() {
     title: '', category: 'GAMBAR_KERJA', notes: '', parentId: '',
     relatedUserId: '', relatedTukangId: '', materialReqId: ''
   });
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  const [editDocId, setEditDocId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +83,7 @@ export default function DocumentsPage() {
     setLoading(true);
     
     // Load documents
-    api.get(`/documents/project/${selectedProjectId}`)
+    api.get(`/documents/project/${selectedProjectId}?archived=${showArchived}`)
       .then(res => setDocuments(res.data))
       .finally(() => setLoading(false));
 
@@ -91,7 +94,7 @@ export default function DocumentsPage() {
       setMaterialReqs(res.data.materialRequests || []);
     }).catch(console.error);
 
-  }, [selectedProjectId]);
+  }, [selectedProjectId, showArchived]);
 
   useEffect(() => {
     const u = localStorage.getItem('user');
@@ -132,9 +135,30 @@ export default function DocumentsPage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return alert('Pilih file dokumen!');
     setSubmitting(true);
     try {
+      if (isEditingMetadata) {
+        await api.patch(`/documents/${editDocId}`, {
+          fileName: uploadData.title,
+          category: uploadData.category,
+          description: uploadData.notes,
+          relatedUserId: uploadData.relatedUserId || null,
+          relatedTukangId: uploadData.relatedTukangId || null,
+          materialReqId: uploadData.materialReqId || null,
+        });
+        setIsEditingMetadata(false);
+        setEditDocId('');
+        setShowUpload(false);
+        setUploadData({ title: '', category: 'GAMBAR_KERJA', notes: '', parentId: '', relatedUserId: '', relatedTukangId: '', materialReqId: '' });
+        api.get(`/documents/project/${selectedProjectId}?archived=${showArchived}`).then(res => setDocuments(res.data));
+        return;
+      }
+
+      if (!file) {
+        setSubmitting(false);
+        return alert('Pilih file dokumen!');
+      }
+
       const formData = new FormData();
       formData.append('file', file);
       
@@ -167,12 +191,38 @@ export default function DocumentsPage() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       
       // Reload docs
-      const res = await api.get(`/documents/project/${selectedProjectId}`);
+      const res = await api.get(`/documents/project/${selectedProjectId}?archived=${showArchived}`);
       setDocuments(res.data);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Gagal upload dokumen');
+      alert(err.response?.data?.message || 'Gagal upload/simpan dokumen');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditMetadata = (d: any) => {
+    setUploadData({
+      title: d.fileName,
+      category: d.category,
+      notes: d.description || '',
+      parentId: '',
+      relatedUserId: d.relatedUserId || '',
+      relatedTukangId: d.relatedTukangId || '',
+      materialReqId: d.materialReqId || '',
+    });
+    setEditDocId(d.id);
+    setIsEditingMetadata(true);
+    setShowUpload(true);
+  };
+
+  const handleArchiveToggle = async (id: string, currentlyArchived: boolean) => {
+    if (!confirm(currentlyArchived ? 'Batal arsipkan dokumen ini?' : 'Yakin ingin mengarsipkan dokumen ini?')) return;
+    try {
+      if (currentlyArchived) await api.patch(`/documents/${id}/unarchive`);
+      else await api.patch(`/documents/${id}/archive`);
+      api.get(`/documents/project/${selectedProjectId}?archived=${showArchived}`).then(res => setDocuments(res.data));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah status arsip');
     }
   };
 
@@ -226,7 +276,16 @@ export default function DocumentsPage() {
                 >{categoryLabels[c]}</button>
               ))}
             </div>
-            <span className="badge badge-info">{filtered.length} Dokumen Utama</span>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <button 
+                className={`btn-secondary ${showArchived ? 'active' : ''}`} 
+                onClick={() => setShowArchived(!showArchived)}
+                style={{ padding: '8px 12px', background: showArchived ? '#3b82f6' : '#1e293b', color: showArchived ? 'white' : '#94a3b8' }}
+              >
+                {showArchived ? '📂 Sembunyikan Arsip' : '📂 Tampilkan Arsip'}
+              </button>
+              <span className="badge badge-info">{filtered.length} Dokumen Utama</span>
+            </div>
           </div>
 
           {loading ? (
@@ -272,18 +331,24 @@ export default function DocumentsPage() {
                     </td>
                     <td className="td-muted">{new Date(d.createdAt).toLocaleDateString('id-ID')}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <a href={getImageUrl(d.fileUrl)} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12, textDecoration: 'none' }}>
                           ⬇️ Unduh
                         </a>
                         <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => loadComments(d.id)}>
                           💬 Komentar ({d.comments?.length || 0})
                         </button>
-                        <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => {
-                          setUploadData({ title: d.title, category: d.category, notes: '', parentId: d.id });
-                          setShowUpload(true);
-                        }}>
-                          + Versi Baru
+                        {!d.isArchived && (
+                          <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => {
+                            setUploadData({ title: d.title, category: d.category, notes: '', parentId: d.id, relatedUserId: '', relatedTukangId: '', materialReqId: '' });
+                            setShowUpload(true);
+                          }}>
+                            + Versi Baru
+                          </button>
+                        )}
+                        <button onClick={() => handleEditMetadata(d)} className="badge badge-info" style={{ border: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 12 }}>✏️ Edit Metadata</button>
+                        <button onClick={() => handleArchiveToggle(d.id, d.isArchived)} className={d.isArchived ? "badge badge-success" : "badge badge-warning"} style={{ border: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 12 }}>
+                          {d.isArchived ? 'Batal Arsip' : '📦 Arsipkan'}
                         </button>
                       </div>
                     </td>
@@ -297,9 +362,14 @@ export default function DocumentsPage() {
 
       {/* Upload Modal */}
       {showUpload && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowUpload(false)}>
+        <div className="modal-overlay" onClick={e => {
+          if (e.target === e.currentTarget) {
+            setShowUpload(false);
+            setIsEditingMetadata(false);
+          }
+        }}>
           <div className="modal">
-            <div className="modal-title">{uploadData.parentId ? 'Upload Versi Baru' : 'Upload Dokumen Baru'}</div>
+            <div className="modal-title">{isEditingMetadata ? '✏️ Edit Metadata Dokumen' : (uploadData.parentId ? 'Upload Versi Baru' : 'Upload Dokumen Baru')}</div>
             <form onSubmit={handleUpload}>
               <div className="form-group">
                 <label className="form-label">Judul Dokumen</label>
@@ -312,7 +382,7 @@ export default function DocumentsPage() {
                 </select>
               </div>
 
-              {!uploadData.parentId && (['INVOICE', 'KONTRAK'].includes(uploadData.category)) && (
+              {!uploadData.parentId && !isEditingMetadata && (['INVOICE', 'KONTRAK'].includes(uploadData.category)) && (
                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', marginBottom: '14px', border: '1px dashed rgba(255,255,255,0.1)' }}>
                   <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12, fontWeight: 600 }}>ASOSIASI DOKUMEN (OPSIONAL)</p>
                   
@@ -342,18 +412,23 @@ export default function DocumentsPage() {
                 </div>
               )}
 
-              <div className="form-group">
-                <label className="form-label">File Dokumen (PDF, DWG, DOCX)</label>
-                <input type="file" ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="input" style={{ padding: '8px' }} required />
-              </div>
+              {!isEditingMetadata && (
+                <div className="form-group">
+                  <label className="form-label">File Dokumen (PDF, DWG, DOCX)</label>
+                  <input type="file" ref={fileInputRef} onChange={e => setFile(e.target.files?.[0] || null)} className="input" style={{ padding: '8px' }} required />
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Catatan Tambahan (Opsional)</label>
                 <textarea className="input" value={uploadData.notes} onChange={e => setUploadData({...uploadData, notes: e.target.value})} style={{ minHeight: 60 }} />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowUpload(false)}>Batal</button>
-                <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? '⏳ Mengupload...' : '📤 Upload'}
+                <button type="button" className="btn-secondary" onClick={() => {
+                  setShowUpload(false);
+                  setIsEditingMetadata(false);
+                }}>Batal</button>
+                <button type="submit" className="btn-primary" disabled={submitting || (!file && !isEditingMetadata)}>
+                  {submitting ? '⏳ Menyimpan...' : (isEditingMetadata ? '💾 Simpan Perubahan' : '📤 Upload')}
                 </button>
               </div>
             </form>

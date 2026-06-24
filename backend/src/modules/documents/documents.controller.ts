@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -23,8 +23,8 @@ export class DocumentsController {
   }
 
   @Get('project/:projectId')
-  getProjectDocuments(@Param('projectId') projectId: string) {
-    return this.documentsService.getProjectDocuments(projectId);
+  getProjectDocuments(@Param('projectId') projectId: string, @Query('archived') archived?: string) {
+    return this.documentsService.getProjectDocuments(projectId, archived);
   }
 
   @Roles(UserRole.KONSUMEN)
@@ -52,5 +52,23 @@ export class DocumentsController {
   @Get(':id/comments')
   getComments(@Param('id') id: string) {
     return this.documentsService.getComments(id);
+  }
+
+  @Roles(UserRole.ARSITEK, UserRole.ESTIMATOR, UserRole.DRAFTER, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.ADMIN_PROYEK)
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.documentsService.update(id, body);
+  }
+
+  @Roles(UserRole.ARSITEK, UserRole.ESTIMATOR, UserRole.DRAFTER, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.ADMIN_PROYEK)
+  @Patch(':id/archive')
+  archive(@Param('id') id: string) {
+    return this.documentsService.archive(id);
+  }
+
+  @Roles(UserRole.ARSITEK, UserRole.ESTIMATOR, UserRole.DRAFTER, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.ADMIN_PROYEK)
+  @Patch(':id/unarchive')
+  unarchive(@Param('id') id: string) {
+    return this.documentsService.unarchive(id);
   }
 }

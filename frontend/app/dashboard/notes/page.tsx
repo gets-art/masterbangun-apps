@@ -8,9 +8,12 @@ export default function NotesPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Modals
   const [showAdd, setShowAdd] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState('');
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,32 +30,45 @@ export default function NotesPage() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!selectedProjectId) return;
-    loadNotes();
-  }, [selectedProjectId]);
-
   const loadNotes = () => {
     setLoading(true);
-    api.get(`/notes/project/${selectedProjectId}`)
+    api.get(`/notes/project/${selectedProjectId}?archived=${showArchived}`)
       .then(res => setNotes(res.data))
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    loadNotes();
+  }, [selectedProjectId, showArchived]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
     setSubmitting(true);
     try {
-      await api.post('/notes', { ...formData, projectId: selectedProjectId });
+      if (isEditing) {
+        await api.patch(`/notes/${editId}`, { title: formData.title, content: formData.content });
+      } else {
+        await api.post('/notes', { ...formData, projectId: selectedProjectId });
+      }
       setShowAdd(false);
+      setIsEditing(false);
+      setEditId('');
       setFormData({ title: '', content: '' });
       loadNotes();
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Gagal menambahkan catatan');
+      alert(e.response?.data?.message || 'Gagal menyimpan catatan');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleEditNote = (note: any) => {
+    setFormData({ title: note.title, content: note.content });
+    setEditId(note.id);
+    setIsEditing(true);
+    setShowAdd(true);
   };
 
   const handleTogglePin = async (id: string) => {
@@ -65,12 +81,23 @@ export default function NotesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus catatan ini?')) return;
+    if (!confirm('Hapus permanen catatan ini?')) return;
     try {
       await api.delete(`/notes/${id}`);
       loadNotes();
     } catch (e: any) {
       alert('Gagal menghapus catatan');
+    }
+  };
+
+  const handleArchiveToggle = async (id: string, currentlyArchived: boolean) => {
+    if (!confirm(currentlyArchived ? 'Batal arsipkan catatan ini?' : 'Yakin ingin mengarsipkan catatan ini?')) return;
+    try {
+      if (currentlyArchived) await api.patch(`/notes/${id}/unarchive`);
+      else await api.patch(`/notes/${id}/archive`);
+      loadNotes();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah status arsip');
     }
   };
 
@@ -97,11 +124,18 @@ export default function NotesPage() {
       </div>
 
       <div className="page-content">
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <label className="form-label" style={{ marginBottom: 0 }}>Pilih Proyek:</label>
           <select className="input" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} style={{ width: 300, background: '#1e293b' }}>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          <button 
+            className={`btn-secondary ${showArchived ? 'active' : ''}`} 
+            onClick={() => setShowArchived(!showArchived)}
+            style={{ padding: '8px 12px', background: showArchived ? '#3b82f6' : '#1e293b', color: showArchived ? 'white' : '#94a3b8' }}
+          >
+            {showArchived ? '📂 Sembunyikan Arsip' : '📂 Tampilkan Arsip'}
+          </button>
         </div>
 
         {loading ? (
@@ -145,9 +179,15 @@ export default function NotesPage() {
                     </div>
                   </div>
                   {canManage && (
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <button onClick={() => handleTogglePin(note.id)} title={note.isPinned ? 'Unpin' : 'Pin'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.7, fontSize: 14 }}>
                         {note.isPinned ? '⭐' : '📌'}
+                      </button>
+                      <button onClick={() => handleEditNote(note)} title="Edit" style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.7, fontSize: 14 }}>
+                        ✏️
+                      </button>
+                      <button onClick={() => handleArchiveToggle(note.id, note.isArchived)} title={note.isArchived ? "Batal Arsip" : "Arsipkan"} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.7, fontSize: 14 }}>
+                        {note.isArchived ? '📦 Batal' : '📦'}
                       </button>
                       <button onClick={() => handleDelete(note.id)} title="Hapus" style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.7, fontSize: 14 }}>
                         🗑️
@@ -162,9 +202,14 @@ export default function NotesPage() {
       </div>
 
       {showAdd && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+        <div className="modal-overlay" onClick={e => {
+          if (e.target === e.currentTarget) {
+            setShowAdd(false);
+            setIsEditing(false);
+          }
+        }}>
           <div className="modal" style={{ maxWidth: 600 }}>
-            <div className="modal-title">📝 Tambah Catatan Proyek</div>
+            <div className="modal-title">{isEditing ? '✏️ Edit Catatan Proyek' : '📝 Tambah Catatan Proyek'}</div>
             <form onSubmit={handleAddNote}>
               <div className="form-group">
                 <label className="form-label">Judul Catatan</label>
@@ -175,9 +220,12 @@ export default function NotesPage() {
                 <textarea required className="input" placeholder="Tulis catatan lengkap di sini..." value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} style={{ minHeight: 150 }} />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowAdd(false)}>Batal</button>
+                <button type="button" className="btn-secondary" onClick={() => {
+                  setShowAdd(false);
+                  setIsEditing(false);
+                }}>Batal</button>
                 <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? '⏳ Menyimpan...' : '💾 Simpan Catatan'}
+                  {submitting ? '⏳ Menyimpan...' : (isEditing ? '💾 Simpan Perubahan' : '💾 Simpan Catatan')}
                 </button>
               </div>
             </form>

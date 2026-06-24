@@ -48,7 +48,21 @@ export class DailyReportsService {
   }
 
   async approve(id: string) {
-    return this.prisma.dailyReport.update({ where: { id }, data: { status: 'APPROVED' } });
+    const report = await this.prisma.dailyReport.update({ 
+      where: { id }, 
+      data: { status: 'APPROVED' } 
+    });
+    
+    // Update the project's progress percentage if this report has a higher progress
+    const project = await this.prisma.project.findUnique({ where: { id: report.projectId } });
+    if (project && report.progressPercentage > project.progressPercentage) {
+      await this.prisma.project.update({
+        where: { id: report.projectId },
+        data: { progressPercentage: report.progressPercentage }
+      });
+    }
+    
+    return report;
   }
 
   async requestRevision(id: string, notes: string) {

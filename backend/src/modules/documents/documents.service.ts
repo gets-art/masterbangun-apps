@@ -47,9 +47,10 @@ export class DocumentsService {
     });
   }
 
-  async getProjectDocuments(projectId: string) {
+  async getProjectDocuments(projectId: string, archived: string = 'false') {
+    const isArchived = archived === 'true';
     return this.prisma.projectDocument.findMany({
-      where: { projectId, isLatest: true },
+      where: { projectId, isLatest: true, isArchived },
       include: { uploader: { select: { name: true, role: true } }, relatedUser: { select: { name: true, role: true } }, relatedTukang: { select: { name: true, type: true } }, materialRequest: true, _count: { select: { versions: true, comments: true } } },
       orderBy: { createdAt: 'desc' }
     });
@@ -96,5 +97,27 @@ export class DocumentsService {
       include: { user: { select: { name: true, role: true } } },
       orderBy: { createdAt: 'asc' }
     });
+  }
+
+  async update(id: string, data: any) {
+    return this.prisma.projectDocument.update({
+      where: { id },
+      data: {
+        fileName: data.fileName,
+        category: data.category,
+        description: data.description,
+        relatedUserId: data.relatedUserId || null,
+        relatedTukangId: data.relatedTukangId || null,
+        materialReqId: data.materialReqId || null,
+      }
+    });
+  }
+
+  async archive(id: string) {
+    return this.prisma.projectDocument.update({ where: { id }, data: { isArchived: true } });
+  }
+
+  async unarchive(id: string) {
+    return this.prisma.projectDocument.update({ where: { id }, data: { isArchived: false } });
   }
 }

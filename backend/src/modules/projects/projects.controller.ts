@@ -13,8 +13,8 @@ export class ProjectsController {
   constructor(private projectsService: ProjectsService) {}
 
   @Get()
-  findAll(@Request() req: any, @Query('city') city?: string) {
-    return this.projectsService.findAll(req.user.id, req.user.role, city);
+  findAll(@Request() req: any, @Query('city') city?: string, @Query('archived') archived?: string) {
+    return this.projectsService.findAll(req.user.id, req.user.role, city, archived);
   }
 
   @Get(':id')
@@ -32,6 +32,18 @@ export class ProjectsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return this.projectsService.update(id, dto);
+  }
+
+  @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Patch(':id/archive')
+  archive(@Param('id') id: string) {
+    return this.projectsService.archive(id);
+  }
+
+  @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Patch(':id/unarchive')
+  unarchive(@Param('id') id: string) {
+    return this.projectsService.unarchive(id);
   }
 
   @Roles(UserRole.ADMIN_PROYEK, UserRole.SUPER_ADMIN)

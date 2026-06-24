@@ -8,8 +8,9 @@ import { UserRole } from '@prisma/client';
 export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(userId: string, userRole: UserRole, city?: string) {
-    const whereClause: any = {};
+  async findAll(userId: string, userRole: UserRole, city?: string, archived: string = 'false') {
+    const isArchived = archived === 'true';
+    const whereClause: any = { isArchived };
     if (city) whereClause.city = { contains: city };
 
     // Super admin and manager see all, others see assigned only
@@ -54,6 +55,14 @@ export class ProjectsService {
     if (dto.startDate) data.startDate = new Date(dto.startDate);
     if (dto.estimatedEndDate) data.estimatedEndDate = new Date(dto.estimatedEndDate);
     return this.prisma.project.update({ where: { id }, data });
+  }
+
+  async archive(id: string) {
+    return this.prisma.project.update({ where: { id }, data: { isArchived: true } });
+  }
+
+  async unarchive(id: string) {
+    return this.prisma.project.update({ where: { id }, data: { isArchived: false } });
   }
 
   async assignUser(projectId: string, userId: string) {

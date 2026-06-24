@@ -6,42 +6,78 @@ export default function AdminTukang() {
   const [tukang, setTukang] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '', skill: '', type: 'HARIAN', dailyRate: '', contractValue: '', contractDesc: '' });
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const loadTukang = () => {
     setLoading(true);
-    api.get('/tukang').then(res => setTukang(res.data)).finally(() => setLoading(false));
+    api.get(`/tukang?archived=${showArchived}`).then(res => setTukang(res.data)).finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadTukang();
     const u = localStorage.getItem('user');
     if (u) setCurrentUser(JSON.parse(u));
-  }, []);
+  }, [showArchived]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       const payload = {
-        ...formData,
-        phone: formData.phone || undefined,
-        skill: formData.skill || undefined,
-        dailyRate: formData.type === 'HARIAN' && formData.dailyRate ? Number(formData.dailyRate) : undefined,
-        contractValue: formData.type === 'BORONGAN' && formData.contractValue ? Number(formData.contractValue) : undefined,
-        contractDesc: formData.type === 'BORONGAN' ? (formData.contractDesc || undefined) : undefined,
+        name: formData.name,
+        type: formData.type,
+        phone: formData.phone || null,
+        skill: formData.skill || null,
+        dailyRate: formData.type === 'HARIAN' && formData.dailyRate ? Number(formData.dailyRate) : null,
+        contractValue: formData.type === 'BORONGAN' && formData.contractValue ? Number(formData.contractValue) : null,
+        contractDesc: formData.type === 'BORONGAN' ? (formData.contractDesc || null) : null,
       };
-      await api.post('/tukang', payload);
+      if (isEditing) {
+        await api.patch(`/tukang/${editId}`, payload);
+      } else {
+        await api.post('/tukang', payload);
+      }
       setShowModal(false);
+      setIsEditing(false);
+      setEditId('');
       setFormData({ name: '', phone: '', skill: '', type: 'HARIAN', dailyRate: '', contractValue: '', contractDesc: '' });
       loadTukang();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Gagal registrasi tukang');
+      alert(err.response?.data?.message || 'Gagal menyimpan data tukang');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (t: any) => {
+    setFormData({
+      name: t.name,
+      phone: t.phone || '',
+      skill: t.skill || '',
+      type: t.type || 'HARIAN',
+      dailyRate: t.dailyRate || '',
+      contractValue: t.contractValue || '',
+      contractDesc: t.contractDesc || ''
+    });
+    setEditId(t.id);
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
+  const handleArchiveToggle = async (id: string, currentlyArchived: boolean) => {
+    if (!confirm(currentlyArchived ? 'Batal arsipkan tukang ini?' : 'Yakin ingin mengarsipkan tukang ini?')) return;
+    try {
+      if (currentlyArchived) await api.patch(`/tukang/${id}/unarchive`);
+      else await api.patch(`/tukang/${id}/archive`);
+      loadTukang();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah status arsip');
     }
   };
 
@@ -66,23 +102,27 @@ export default function AdminTukang() {
           <div className="topbar-sub">{tukang.length} tukang terdaftar</div>
         </div>
         {['SUPER_ADMIN', 'ADMIN_PROYEK'].includes(currentUser?.role) && (
-          <button className="btn-primary" onClick={() => setShowModal(true)}>+ Registrasi Tukang</button>
+          <button className="btn-primary" onClick={() => { setFormData({ name: '', phone: '', skill: '', type: 'HARIAN', dailyRate: '', contractValue: '', contractDesc: '' }); setIsEditing(false); setShowModal(true); }}>+ Registrasi Tukang</button>
         )}
       </div>
 
       <div className="page-content">
         <div className="table-wrapper">
           <div className="table-header">
-            <div className="search-wrapper">
-              <span className="search-icon">🔍</span>
-              <input
-                className="input"
-                placeholder="Cari nama atau keahlian..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="search-wrapper">
+                <span className="search-icon">🔍</span>
+                <input className="input" placeholder="Cari nama atau skill..." value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+              <button 
+                className={`btn-secondary ${showArchived ? 'active' : ''}`} 
+                onClick={() => setShowArchived(!showArchived)}
+                style={{ padding: '10px 16px', background: showArchived ? '#3b82f6' : '#1e293b', color: showArchived ? 'white' : '#94a3b8' }}
+              >
+                {showArchived ? '📂 Sembunyikan Arsip' : '📂 Tampilkan Arsip'}
+              </button>
+              <span className="badge badge-info">{filtered.length} Tukang</span>
             </div>
-            <span className="badge badge-info">{filtered.length} tukang</span>
           </div>
           <table>
             <thead>
@@ -93,6 +133,7 @@ export default function AdminTukang() {
                 <th>Tarif / Kontrak Global</th>
                 <th>No. Telepon</th>
                 <th>Status</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -116,10 +157,18 @@ export default function AdminTukang() {
                       {t.isActive ? '● Aktif' : '○ Nonaktif'}
                     </span>
                   </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleEdit(t)} className="badge badge-info" style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>✏️ Edit</button>
+                      <button onClick={() => handleArchiveToggle(t.id, t.isArchived)} className={t.isArchived ? "badge badge-success" : "badge badge-warning"} style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>
+                        {t.isArchived ? 'Batal Arsip' : '📦 Arsipkan'}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6}>
+                <tr><td colSpan={7}>
                   <div className="empty-state"><div className="empty-state-icon">👷</div><div className="empty-state-title">Tidak ada tukang</div></div>
                 </td></tr>
               )}
@@ -131,7 +180,7 @@ export default function AdminTukang() {
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
-            <div className="modal-title">👷 Registrasi Tukang Baru</div>
+            <div className="modal-title">{isEditing ? '✏️ Edit Data Tukang' : '👷 Tambah Tukang Baru'}</div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nama Lengkap</label>
@@ -173,7 +222,7 @@ export default function AdminTukang() {
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
                 <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? '⏳ Menyimpan...' : '👷 Daftarkan'}
+                  {submitting ? '⏳ Menyimpan...' : (isEditing ? '💾 Simpan Perubahan' : '👷 Tambahkan Tukang')}
                 </button>
               </div>
             </form>

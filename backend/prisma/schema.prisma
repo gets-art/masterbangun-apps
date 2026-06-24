@@ -112,11 +112,13 @@ model Project {
   gpsCoordinates     String?       @map("gps_coordinates")
   startDate          DateTime      @map("start_date")
   estimatedEndDate   DateTime?     @map("estimated_end_date")
+  extensionNote      String?       @map("extension_note")
   progressPercentage Int           @default(0) @map("progress_percentage")
   status             ProjectStatus @default(ACTIVE)
   normalStartHour    String        @default("08:00") @map("normal_start_hour")
   normalEndHour      String        @default("16:00") @map("normal_end_hour")
   workDays           String        @default("1,2,3,4,5,6") @map("work_days")
+  isArchived         Boolean       @default(false) @map("is_archived")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
 
@@ -142,6 +144,7 @@ model Tukang {
   contractDesc  String?   @map("contract_desc")
   photoUrl     String?    @map("photo_url")
   isActive     Boolean    @default(true) @map("is_active")
+  isArchived   Boolean    @default(false) @map("is_archived")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
@@ -321,6 +324,7 @@ model ProjectDocument {
   isLatest         Boolean      @default(true) @map("is_latest")
   sharedToConsumer Boolean      @default(false) @map("shared_to_consumer")
   parentId         String?      @map("parent_id")
+  isArchived       Boolean      @default(false) @map("is_archived")
   
   // Associations for History
   relatedUserId    String?      @map("related_user_id")
@@ -364,6 +368,7 @@ model ProjectNote {
   title     String
   content   String
   isPinned  Boolean  @default(false) @map("is_pinned")
+  isArchived Boolean @default(false) @map("is_archived")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

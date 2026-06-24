@@ -14,7 +14,7 @@ export class TukangController {
 
   @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.PENGAWAS, UserRole.MANDOR)
   @Get()
-  findAll(@Query('type') type?: string) { return this.tukangService.findAll(type); }
+  findAll(@Query('type') type?: string, @Query('archived') archived?: string) { return this.tukangService.findAll(type, archived); }
 
   @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.PENGAWAS, UserRole.MANDOR)
   @Get('project/:projectId')
@@ -31,4 +31,12 @@ export class TukangController {
   @Roles(UserRole.ADMIN_PROYEK, UserRole.SUPER_ADMIN)
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateTukangDto) { return this.tukangService.update(id, dto); }
+
+  @Roles(UserRole.ADMIN_PROYEK, UserRole.SUPER_ADMIN)
+  @Patch(':id/archive')
+  archive(@Param('id') id: string) { return this.tukangService.archive(id); }
+
+  @Roles(UserRole.ADMIN_PROYEK, UserRole.SUPER_ADMIN)
+  @Patch(':id/unarchive')
+  unarchive(@Param('id') id: string) { return this.tukangService.unarchive(id); }
 }

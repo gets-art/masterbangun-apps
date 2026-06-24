@@ -6,9 +6,12 @@ export default function AdminProjects() {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [filterCity, setFilterCity] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   
   // Manage Team Modal State
   const [manageProject, setManageProject] = useState<any>(null);
@@ -28,6 +31,8 @@ export default function AdminProjects() {
     address: '',
     city: '',
     startDate: new Date().toISOString().split('T')[0],
+    estimatedEndDate: '',
+    extensionNote: '',
     status: 'ACTIVE',
     normalStartHour: '08:00',
     normalEndHour: '17:00',
@@ -35,27 +40,61 @@ export default function AdminProjects() {
 
   const loadProjects = () => {
     setLoading(true);
-    api.get('/projects').then(res => setProjects(res.data)).finally(() => setLoading(false));
+    api.get(`/projects?archived=${showArchived}`).then(res => setProjects(res.data)).finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadProjects();
     const u = localStorage.getItem('user');
     if (u) setCurrentUser(JSON.parse(u));
-  }, []);
+  }, [showArchived]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/projects', formData);
+      if (isEditing) {
+        await api.patch(`/projects/${editId}`, formData);
+      } else {
+        await api.post('/projects', formData);
+      }
       setShowModal(false);
-      setFormData({ name: '', address: '', city: '', startDate: new Date().toISOString().split('T')[0], status: 'ACTIVE', normalStartHour: '08:00', normalEndHour: '17:00' });
+      setFormData({ name: '', address: '', city: '', startDate: new Date().toISOString().split('T')[0], estimatedEndDate: '', extensionNote: '', status: 'ACTIVE', normalStartHour: '08:00', normalEndHour: '17:00' });
+      setIsEditing(false);
+      setEditId('');
       loadProjects();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Gagal menambahkan proyek');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (p: any) => {
+    setFormData({
+      name: p.name,
+      address: p.address,
+      city: p.city || '',
+      startDate: p.startDate.split('T')[0],
+      estimatedEndDate: p.estimatedEndDate ? p.estimatedEndDate.split('T')[0] : '',
+      extensionNote: p.extensionNote || '',
+      status: p.status,
+      normalStartHour: p.normalStartHour,
+      normalEndHour: p.normalEndHour,
+    });
+    setEditId(p.id);
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
+  const handleArchiveToggle = async (id: string, currentlyArchived: boolean) => {
+    if (!confirm(currentlyArchived ? 'Batal arsipkan proyek ini?' : 'Yakin ingin mengarsipkan proyek ini?')) return;
+    try {
+      if (currentlyArchived) await api.patch(`/projects/${id}/unarchive`);
+      else await api.patch(`/projects/${id}/archive`);
+      loadProjects();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah status arsip');
     }
   };
 
@@ -162,15 +201,19 @@ export default function AdminProjects() {
 
         <div className="table-wrapper">
           <div className="table-header">
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div className="search-wrapper">
-                <span className="search-icon">🔍</span>
-                <input className="input" placeholder="Cari proyek..." value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-              <select className="input" value={filterCity} onChange={e => setFilterCity(e.target.value)} style={{ width: 'auto' }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input className="input" placeholder="Cari proyek..." style={{ flex: 1, minWidth: 200 }} value={search} onChange={e => setSearch(e.target.value)} />
+              <select className="input" value={filterCity} onChange={e => setFilterCity(e.target.value)} style={{ width: 200 }}>
                 <option value="">Semua Kota</option>
                 {uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              <button 
+                className={`btn-secondary ${showArchived ? 'active' : ''}`} 
+                onClick={() => setShowArchived(!showArchived)}
+                style={{ padding: '10px 16px', background: showArchived ? '#3b82f6' : '#1e293b', color: showArchived ? 'white' : '#94a3b8' }}
+              >
+                {showArchived ? '📂 Sembunyikan Arsip' : '📂 Tampilkan Arsip'}
+              </button>
               <span className="badge badge-info">{filtered.length} proyek</span>
             </div>
           </div>
@@ -214,7 +257,13 @@ export default function AdminProjects() {
                     }</span>
                   </td>
                   <td>
-                    <button onClick={() => openManageModal(p)} className="badge badge-purple" style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>👥 Kelola Tim</button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleEdit(p)} className="badge badge-info" style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>✏️ Edit</button>
+                      <button onClick={() => handleArchiveToggle(p.id, p.isArchived)} className={p.isArchived ? "badge badge-success" : "badge badge-warning"} style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>
+                        {p.isArchived ? 'Batal Arsip' : '📦 Arsipkan'}
+                      </button>
+                      <button onClick={() => openManageModal(p)} className="badge badge-purple" style={{ border: 'none', cursor: 'pointer', padding: '6px 12px' }}>👥 Kelola Tim</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -229,7 +278,7 @@ export default function AdminProjects() {
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
-            <div className="modal-title">🏗️ Tambah Proyek Baru</div>
+            <div className="modal-title">{isEditing ? '✏️ Edit Proyek' : '🏗️ Tambah Proyek Baru'}</div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nama Proyek</label>
@@ -249,6 +298,10 @@ export default function AdminProjects() {
                   <input type="date" className="input" required value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
                 </div>
                 <div className="form-group">
+                  <label className="form-label">Target Selesai</label>
+                  <input type="date" className="input" value={formData.estimatedEndDate} onChange={e => setFormData({...formData, estimatedEndDate: e.target.value})} />
+                </div>
+                <div className="form-group">
                   <label className="form-label">Status</label>
                   <select className="input" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                     <option value="ACTIVE">Aktif (Sedang Berjalan)</option>
@@ -264,10 +317,18 @@ export default function AdminProjects() {
                   <input type="time" className="input" value={formData.normalEndHour} onChange={e => setFormData({...formData, normalEndHour: e.target.value})} />
                 </div>
               </div>
+              
+              {isEditing && (
+                <div className="form-group" style={{ marginTop: 12 }}>
+                  <label className="form-label">Catatan Perubahan Jadwal (Opsional)</label>
+                  <textarea className="input" placeholder="Misal: Perpanjangan waktu karena penambahan ruang keluarga" value={formData.extensionNote} onChange={e => setFormData({...formData, extensionNote: e.target.value})} />
+                </div>
+              )}
+              
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
                 <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? '⏳ Menyimpan...' : '🏗️ Buat Proyek'}
+                  {submitting ? '⏳ Menyimpan...' : (isEditing ? '💾 Simpan Perubahan' : '🏗️ Buat Proyek')}
                 </button>
               </div>
             </form>
