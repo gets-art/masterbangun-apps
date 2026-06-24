@@ -7,6 +7,7 @@ import { getImageUrl } from '@/lib/utils';
 export default function KonsumenDashboard() {
   const [projects, setProjects] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const user = getUser();
@@ -19,6 +20,8 @@ export default function KonsumenDashboard() {
         setSelectedProject(proj);
         const rRes = await api.get(`/daily-reports?projectId=${proj.id}`);
         setReports(rRes.data);
+        const docRes = await api.get(`/documents/project/${proj.id}/consumer`);
+        setDocuments(docRes.data);
       }
     }).finally(() => setLoading(false));
   }, []);
@@ -28,6 +31,8 @@ export default function KonsumenDashboard() {
     setSelectedProject(proj);
     const rRes = await api.get(`/daily-reports?projectId=${id}`);
     setReports(rRes.data);
+    const docRes = await api.get(`/documents/project/${id}/consumer`);
+    setDocuments(docRes.data);
   };
 
   if (loading) return (
@@ -159,6 +164,53 @@ export default function KonsumenDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {/* Dokumen Proyek */}
+            <div style={{ marginTop: 32, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>📁 Dokumen Proyek</h3>
+              <span className="text-muted" style={{ fontSize: 13 }}>File dan dokumen penting</span>
+            </div>
+
+            {documents.length === 0 ? (
+              <div className="table-wrapper">
+                <div className="empty-state">
+                  <div className="empty-state-icon">📁</div>
+                  <div className="empty-state-title">Belum ada dokumen</div>
+                  <div className="empty-state-desc">Dokumen proyek akan muncul di sini jika dibagikan oleh admin</div>
+                </div>
+              </div>
+            ) : (
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nama Dokumen</th>
+                      <th>Kategori</th>
+                      <th>Versi</th>
+                      <th>Tanggal</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.map(d => (
+                      <tr key={d.id}>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#e2e8f0' }}>{d.title}</div>
+                          {d.notes && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.notes}</div>}
+                        </td>
+                        <td><span className="badge badge-purple">{d.category}</span></td>
+                        <td><span className="badge badge-warning">v{d.version}</span></td>
+                        <td className="td-muted">{new Date(d.createdAt).toLocaleDateString('id-ID')}</td>
+                        <td>
+                          <a href={getImageUrl(d.fileUrl)} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12, textDecoration: 'none' }}>
+                            ⬇️ Unduh
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </>

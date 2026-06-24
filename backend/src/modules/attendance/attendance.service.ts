@@ -26,6 +26,12 @@ export class AttendanceService {
     });
     if (existing) throw new BadRequestException('Tukang sudah absen masuk hari ini untuk proyek ini');
 
+    const tukang = await this.prisma.tukang.findUnique({ where: { id: dto.tukangId } });
+    if (!tukang) throw new BadRequestException('Tukang tidak ditemukan');
+    if (tukang.type === 'HARIAN' && !dto.photoUrl) {
+      throw new BadRequestException('Foto wajib untuk absensi tukang harian');
+    }
+
     return this.prisma.attendance.create({
       data: {
         tukangId: dto.tukangId,
@@ -44,10 +50,14 @@ export class AttendanceService {
     const today = new Date().toISOString().split('T')[0];
     const attendance = await this.prisma.attendance.findUnique({
       where: { tukangId_projectId_attendanceDate: { tukangId: dto.tukangId, projectId: dto.projectId, attendanceDate: today } },
-      include: { project: true },
+      include: { project: true, tukang: true },
     });
     if (!attendance) throw new BadRequestException('Tukang belum absen masuk');
     if (attendance.clockOut) throw new BadRequestException('Tukang sudah absen keluar');
+
+    if (attendance.tukang.type === 'HARIAN' && !dto.photoUrl) {
+      throw new BadRequestException('Foto wajib untuk absensi keluar tukang harian');
+    }
 
     const clockOut = new Date();
     const overtimeHours = this.calculateOvertimeHours(clockOut, attendance.project.normalEndHour);

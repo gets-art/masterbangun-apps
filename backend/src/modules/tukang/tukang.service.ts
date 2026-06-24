@@ -7,8 +7,22 @@ import { UpdateTukangDto } from './dto/update-tukang.dto';
 export class TukangService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.tukang.findMany({ orderBy: { name: 'asc' } });
+  findAll(type?: string) {
+    const where = type ? { type: type as any } : {};
+    return this.prisma.tukang.findMany({ where, orderBy: { name: 'asc' } });
+  }
+
+  findByProject(projectId: string) {
+    return this.prisma.projectTukang.findMany({
+      where: { projectId },
+      include: { tukang: true },
+    }).then(pts => pts.map(pt => ({
+      ...pt.tukang,
+      contractValueProject: pt.contractValue,
+      contractDescProject: pt.contractDesc,
+      progressPercent: pt.progressPercent,
+      isActiveInProject: pt.isActive,
+    })));
   }
 
   async findOne(id: string) {

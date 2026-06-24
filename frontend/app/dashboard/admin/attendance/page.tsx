@@ -86,6 +86,7 @@ export default function AdminAttendance() {
                 <tr>
                   <th>Tanggal</th>
                   <th>Tukang</th>
+                  <th>Tipe</th>
                   <th>Proyek</th>
                   <th>Jam Masuk</th>
                   <th>Jam Keluar</th>
@@ -98,6 +99,11 @@ export default function AdminAttendance() {
                   <tr key={a.id}>
                     <td>{a.attendanceDate || '-'}</td>
                     <td style={{ fontWeight: 600 }}>{a.tukang?.name || '-'}</td>
+                    <td>
+                      <span className={`badge ${a.tukang?.type === 'BORONGAN' ? 'badge-primary' : 'badge-warning'}`}>
+                        {a.tukang?.type || 'HARIAN'}
+                      </span>
+                    </td>
                     <td className="td-muted">{a.project?.name || '-'}</td>
                     <td>{a.clockIn ? new Date(a.clockIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                     <td>{a.clockOut ? new Date(a.clockOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : <span className="badge badge-info">Belum</span>}</td>

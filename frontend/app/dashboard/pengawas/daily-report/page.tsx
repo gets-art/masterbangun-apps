@@ -7,8 +7,12 @@ export default function PengawasDailyReport() {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [sessionPhotos, setSessionPhotos] = useState<File[]>([]);
+  const [sessionData, setSessionData] = useState({ title: '', description: '', caption: '' });
   const [formData, setFormData] = useState({
     projectId: '',
     reportDate: new Date().toISOString().split('T')[0],
@@ -18,6 +22,7 @@ export default function PengawasDailyReport() {
     notes: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionFileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = () => {
     setLoading(true);
@@ -67,6 +72,44 @@ export default function PengawasDailyReport() {
     } catch (err: any) {
       const msg = err.response?.data?.message;
       alert(Array.isArray(msg) ? msg.join('\n') : msg || 'Gagal mengirim laporan');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSessionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (sessionPhotos.length === 0) return alert('Pilih minimal 1 foto untuk sesi ini!');
+    setSubmitting(true);
+    try {
+      // 1. Create Session
+      const sessionRes = await api.post(`/daily-reports/${selectedReportId}/photo-sessions`, {
+        title: sessionData.title || undefined,
+        description: sessionData.description || undefined
+      });
+      const sessionId = sessionRes.data.id;
+
+      // 2. Upload all photos
+      const uploadedUrls: string[] = [];
+      for (const file of sessionPhotos) {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await api.post('/upload/photo', form);
+        uploadedUrls.push(res.data.url);
+      }
+
+      // 3. Attach to session
+      await api.post(`/photos/session/${sessionId}`, {
+        photoUrls: uploadedUrls,
+        caption: sessionData.caption || undefined
+      });
+
+      setShowSessionModal(false);
+      setSessionPhotos([]);
+      setSessionData({ title: '', description: '', caption: '' });
+      alert('Sesi foto berhasil diupload!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal upload sesi foto');
     } finally {
       setSubmitting(false);
     }
@@ -130,6 +173,7 @@ export default function PengawasDailyReport() {
                   <th>Cuaca</th>
                   <th>Progress</th>
                   <th>Status</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,6 +200,18 @@ export default function PengawasDailyReport() {
                         r.status === 'SUBMITTED' ? 'badge-warning' :
                         r.status === 'REVISION' ? 'badge-danger' : 'badge-info'
                       }`}>{statusLabel[r.status] || r.status}</span>
+                    </td>
+                    <td>
+                      <button 
+                        className="btn-secondary" 
+                        style={{ padding: '4px 8px', fontSize: 12 }}
+                        onClick={() => {
+                          setSelectedReportId(r.id);
+                          setShowSessionModal(true);
+                        }}
+                      >
+                        📷 + Sesi Foto
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -260,6 +316,58 @@ export default function PengawasDailyReport() {
                 </button>
                 <button type="submit" className="btn-primary" disabled={submitting}>
                   {submitting ? '⏳ Menyimpan...' : '📤 Kirim Laporan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showSessionModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSessionModal(false)}>
+          <div className="modal" style={{ maxWidth: 540 }}>
+            <div className="modal-title">📷 Tambah Sesi Foto Laporan</div>
+            <form onSubmit={handleSessionSubmit}>
+              <div className="form-group">
+                <label className="form-label">Judul Sesi (Opsional)</label>
+                <input type="text" className="input" placeholder="Contoh: Pengecoran Area A" value={sessionData.title} onChange={e => setSessionData({...sessionData, title: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Deskripsi / Area Sesi</label>
+                <textarea className="input" placeholder="Detail area yang difoto..." value={sessionData.description} onChange={e => setSessionData({...sessionData, description: e.target.value})} style={{ minHeight: 60 }} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Caption Default (Opsional)</label>
+                <input type="text" className="input" placeholder="Berlaku untuk semua foto di sesi ini" value={sessionData.caption} onChange={e => setSessionData({...sessionData, caption: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Upload Foto (Bisa lebih dari 1)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  ref={sessionFileInputRef}
+                  onChange={e => {
+                    if (e.target.files) setSessionPhotos(Array.from(e.target.files));
+                  }}
+                  style={{ display: 'none' }}
+                />
+                <button type="button" className="btn-secondary" onClick={() => sessionFileInputRef.current?.click()}>
+                  📂 Pilih Foto
+                </button>
+                {sessionPhotos.length > 0 && (
+                  <div style={{ marginTop: 12, fontSize: 13 }}>
+                    <strong>{sessionPhotos.length} foto terpilih:</strong>
+                    <ul style={{ paddingLeft: 16, marginTop: 4 }}>
+                      {sessionPhotos.map((f, i) => <li key={i}>{f.name}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowSessionModal(false)}>Batal</button>
+                <button type="submit" className="btn-primary" disabled={submitting}>
+                  {submitting ? '⏳ Mengupload...' : '🚀 Simpan Sesi Foto'}
                 </button>
               </div>
             </form>

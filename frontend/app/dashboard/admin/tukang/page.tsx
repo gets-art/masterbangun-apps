@@ -8,22 +8,35 @@ export default function AdminTukang() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
-  const [formData, setFormData] = useState({ name: '', phone: '', skill: '' });
+  const [formData, setFormData] = useState({ name: '', phone: '', skill: '', type: 'HARIAN', dailyRate: '', contractValue: '', contractDesc: '' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const loadTukang = () => {
     setLoading(true);
     api.get('/tukang').then(res => setTukang(res.data)).finally(() => setLoading(false));
   };
 
-  useEffect(() => loadTukang(), []);
+  useEffect(() => {
+    loadTukang();
+    const u = localStorage.getItem('user');
+    if (u) setCurrentUser(JSON.parse(u));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/tukang', formData);
+      const payload = {
+        ...formData,
+        phone: formData.phone || undefined,
+        skill: formData.skill || undefined,
+        dailyRate: formData.type === 'HARIAN' && formData.dailyRate ? Number(formData.dailyRate) : undefined,
+        contractValue: formData.type === 'BORONGAN' && formData.contractValue ? Number(formData.contractValue) : undefined,
+        contractDesc: formData.type === 'BORONGAN' ? (formData.contractDesc || undefined) : undefined,
+      };
+      await api.post('/tukang', payload);
       setShowModal(false);
-      setFormData({ name: '', phone: '', skill: '' });
+      setFormData({ name: '', phone: '', skill: '', type: 'HARIAN', dailyRate: '', contractValue: '', contractDesc: '' });
       loadTukang();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Gagal registrasi tukang');
@@ -52,7 +65,9 @@ export default function AdminTukang() {
           <div className="topbar-title">👷 Data Tukang</div>
           <div className="topbar-sub">{tukang.length} tukang terdaftar</div>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Registrasi Tukang</button>
+        {['SUPER_ADMIN', 'ADMIN_PROYEK'].includes(currentUser?.role) && (
+          <button className="btn-primary" onClick={() => setShowModal(true)}>+ Registrasi Tukang</button>
+        )}
       </div>
 
       <div className="page-content">
@@ -74,6 +89,8 @@ export default function AdminTukang() {
               <tr>
                 <th>Nama Tukang</th>
                 <th>Keahlian</th>
+                <th>Tipe</th>
+                <th>Tarif / Kontrak Global</th>
                 <th>No. Telepon</th>
                 <th>Status</th>
               </tr>
@@ -87,6 +104,12 @@ export default function AdminTukang() {
                       <span className="badge badge-info" style={{ fontSize: 12 }}>{t.skill}</span>
                     ) : <span className="td-muted">—</span>}
                   </td>
+                  <td><span className={`badge ${t.type === 'BORONGAN' ? 'badge-primary' : 'badge-warning'}`}>{t.type}</span></td>
+                  <td>
+                    {t.type === 'HARIAN' && t.dailyRate ? `Rp ${t.dailyRate.toLocaleString('id-ID')}/hari` : ''}
+                    {t.type === 'BORONGAN' && t.contractValue ? `Rp ${t.contractValue.toLocaleString('id-ID')}` : ''}
+                    {!t.dailyRate && !t.contractValue && <span className="td-muted">—</span>}
+                  </td>
                   <td className="td-muted">{t.phone || '—'}</td>
                   <td>
                     <span className={`badge ${t.isActive ? 'badge-success' : 'badge-danger'}`}>
@@ -96,7 +119,7 @@ export default function AdminTukang() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={4}>
+                <tr><td colSpan={6}>
                   <div className="empty-state"><div className="empty-state-icon">👷</div><div className="empty-state-title">Tidak ada tukang</div></div>
                 </td></tr>
               )}
@@ -122,6 +145,31 @@ export default function AdminTukang() {
                 <label className="form-label">Keahlian / Spesialisasi</label>
                 <input required type="text" className="input" placeholder="Contoh: Tukang Bata, Tukang Besi, Finishing..." value={formData.skill} onChange={e => setFormData({...formData, skill: e.target.value})} />
               </div>
+              <div className="form-group">
+                <label className="form-label">Tipe Tukang</label>
+                <select className="input" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                  <option value="HARIAN">Harian</option>
+                  <option value="BORONGAN">Borongan</option>
+                </select>
+              </div>
+              {formData.type === 'HARIAN' && (
+                <div className="form-group">
+                  <label className="form-label">Tarif Harian (Rp)</label>
+                  <input type="number" className="input" value={formData.dailyRate} onChange={e => setFormData({...formData, dailyRate: e.target.value})} />
+                </div>
+              )}
+              {formData.type === 'BORONGAN' && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Nilai Kontrak Global (Rp)</label>
+                    <input type="number" className="input" value={formData.contractValue} onChange={e => setFormData({...formData, contractValue: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Deskripsi Kontrak</label>
+                    <input type="text" className="input" value={formData.contractDesc} onChange={e => setFormData({...formData, contractDesc: e.target.value})} />
+                  </div>
+                </>
+              )}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
                 <button type="submit" className="btn-primary" disabled={submitting}>

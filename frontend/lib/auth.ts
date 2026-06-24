@@ -2,7 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'MANAGER' | 'PENGAWAS' | 'ADMIN_PROYEK' | 'MANDOR' | 'KONSUMEN';
+  role: 'SUPER_ADMIN' | 'MANAGER' | 'PENGAWAS' | 'ADMIN_PROYEK' | 'MANDOR' | 'KONSUMEN' | 'ARSITEK' | 'ESTIMATOR' | 'DRAFTER';
   language: 'ID' | 'EN';
 }
 
@@ -30,6 +30,9 @@ export const getRedirectPath = (role: string): string => {
     ADMIN_PROYEK: '/dashboard/admin',
     MANDOR: '/dashboard/mandor',
     KONSUMEN: '/dashboard/konsumen',
+    ARSITEK: '/dashboard/professional',
+    ESTIMATOR: '/dashboard/professional',
+    DRAFTER: '/dashboard/professional',
   };
   return paths[role] || '/login';
 };

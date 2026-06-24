@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { TukangService } from './tukang.service';
 import { CreateTukangDto } from './dto/create-tukang.dto';
 import { UpdateTukangDto } from './dto/update-tukang.dto';
@@ -14,7 +14,11 @@ export class TukangController {
 
   @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.PENGAWAS, UserRole.MANDOR)
   @Get()
-  findAll() { return this.tukangService.findAll(); }
+  findAll(@Query('type') type?: string) { return this.tukangService.findAll(type); }
+
+  @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.PENGAWAS, UserRole.MANDOR)
+  @Get('project/:projectId')
+  findByProject(@Param('projectId') projectId: string) { return this.tukangService.findByProject(projectId); }
 
   @Roles(UserRole.ADMIN_PROYEK, UserRole.MANAGER, UserRole.SUPER_ADMIN)
   @Get(':id')

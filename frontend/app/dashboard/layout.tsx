@@ -12,6 +12,8 @@ const roleMenus: Record<string, { href: string; label: string; icon: string }[]>
     { href: '/dashboard/manager/attendance', label: 'Rekap Absensi', icon: '📅' },
     { href: '/dashboard/manager/approvals', label: 'Approval Foto', icon: '🖼️' },
     { href: '/dashboard/manager/materials', label: 'Material', icon: '📦' },
+    { href: '/dashboard/documents', label: 'Dokumen Proyek', icon: '📁' },
+    { href: '/dashboard/notes', label: 'Catatan Proyek', icon: '📝' },
   ],
   SUPER_ADMIN: [
     { href: '/dashboard/admin', label: 'Dashboard', icon: '📊' },
@@ -19,6 +21,8 @@ const roleMenus: Record<string, { href: string; label: string; icon: string }[]>
     { href: '/dashboard/admin/projects', label: 'Proyek', icon: '🏗️' },
     { href: '/dashboard/admin/tukang', label: 'Data Tukang', icon: '👷' },
     { href: '/dashboard/admin/attendance', label: 'Rekap Absensi', icon: '📅' },
+    { href: '/dashboard/documents', label: 'Dokumen Proyek', icon: '📁' },
+    { href: '/dashboard/notes', label: 'Catatan Proyek', icon: '📝' },
   ],
   ADMIN_PROYEK: [
     { href: '/dashboard/admin', label: 'Dashboard', icon: '📊' },
@@ -26,6 +30,8 @@ const roleMenus: Record<string, { href: string; label: string; icon: string }[]>
     { href: '/dashboard/admin/projects', label: 'Proyek', icon: '🏗️' },
     { href: '/dashboard/admin/tukang', label: 'Data Tukang', icon: '👷' },
     { href: '/dashboard/admin/attendance', label: 'Rekap Absensi', icon: '📅' },
+    { href: '/dashboard/documents', label: 'Dokumen Proyek', icon: '📁' },
+    { href: '/dashboard/notes', label: 'Catatan Proyek', icon: '📝' },
   ],
   PENGAWAS: [
     { href: '/dashboard/pengawas', label: 'Dashboard', icon: '📊' },
@@ -42,6 +48,21 @@ const roleMenus: Record<string, { href: string; label: string; icon: string }[]>
     { href: '/dashboard/konsumen', label: 'Proyek Saya', icon: '🏠' },
     { href: '/dashboard/konsumen/gallery', label: 'Galeri Progres', icon: '🖼️' },
   ],
+  ARSITEK: [
+    { href: '/dashboard/professional', label: 'Dashboard', icon: '📊' },
+    { href: '/dashboard/documents', label: 'Dokumen Proyek', icon: '📁' },
+    { href: '/dashboard/notes', label: 'Catatan Proyek', icon: '📝' },
+  ],
+  ESTIMATOR: [
+    { href: '/dashboard/professional', label: 'Dashboard', icon: '📊' },
+    { href: '/dashboard/documents', label: 'Dokumen Proyek', icon: '📁' },
+    { href: '/dashboard/notes', label: 'Catatan Proyek', icon: '📝' },
+  ],
+  DRAFTER: [
+    { href: '/dashboard/professional', label: 'Dashboard', icon: '📊' },
+    { href: '/dashboard/documents', label: 'Dokumen Proyek', icon: '📁' },
+    { href: '/dashboard/notes', label: 'Catatan Proyek', icon: '📝' },
+  ],
 };
 
 const roleBadge: Record<string, string> = {
@@ -51,6 +72,9 @@ const roleBadge: Record<string, string> = {
   PENGAWAS: 'Pengawas Lapangan',
   MANDOR: 'Mandor',
   KONSUMEN: 'Pemilik / Konsumen',
+  ARSITEK: 'Arsitek',
+  ESTIMATOR: 'Estimator',
+  DRAFTER: 'Drafter',
 };
 
 const roleColors: Record<string, string> = {
@@ -60,6 +84,9 @@ const roleColors: Record<string, string> = {
   PENGAWAS: '#3b82f6',
   MANDOR: '#10b981',
   KONSUMEN: '#06b6d4',
+  ARSITEK: '#ec4899',
+  ESTIMATOR: '#14b8a6',
+  DRAFTER: '#f97316',
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -142,7 +169,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {user.role === 'MANAGER' ? '👔' :
                  user.role === 'PENGAWAS' ? '👁️' :
                  user.role === 'MANDOR' ? '👷' :
-                 user.role === 'KONSUMEN' ? '🏠' : '🔑'}
+                 user.role === 'KONSUMEN' ? '🏠' :
+                 ['ARSITEK','ESTIMATOR','DRAFTER'].includes(user.role) ? '📐' : '🔑'}
               </div>
               <div style={{ overflow: 'hidden' }}>
                 <div className="sidebar-user-name">{user.name}</div>

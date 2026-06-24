@@ -21,7 +21,12 @@ export class DailyReportsService {
   async findOne(id: string) {
     const r = await this.prisma.dailyReport.findUnique({
       where: { id },
-      include: { project: true, pengawas: { select: { name: true } }, photos: { where: { isDeleted: false } } },
+      include: { 
+        project: true, 
+        pengawas: { select: { name: true } }, 
+        photos: { where: { isDeleted: false } },
+        photoSessions: { include: { photos: { where: { isDeleted: false } } } }
+      },
     });
     if (!r) throw new NotFoundException('Report not found');
     return r;
@@ -48,5 +53,23 @@ export class DailyReportsService {
 
   async requestRevision(id: string, notes: string) {
     return this.prisma.dailyReport.update({ where: { id }, data: { status: 'REVISION', notes } });
+  }
+
+  async createPhotoSession(dailyReportId: string, title?: string, description?: string) {
+    return this.prisma.photoSession.create({
+      data: {
+        dailyReportId,
+        title,
+        description,
+      }
+    });
+  }
+
+  async getPhotoSessions(dailyReportId: string) {
+    return this.prisma.photoSession.findMany({
+      where: { dailyReportId },
+      include: { photos: { where: { isDeleted: false } } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

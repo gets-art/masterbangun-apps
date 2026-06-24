@@ -39,4 +39,21 @@ export class PhotosService {
     if (!photo) throw new NotFoundException('Photo not found');
     return photo;
   }
+
+  async uploadToSession(sessionId: string, photoUrls: string[], caption?: string) {
+    const session = await this.prisma.photoSession.findUnique({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException('Session not found');
+    
+    // Create photos
+    const createdPhotos = await Promise.all(photoUrls.map(url => this.prisma.reportPhoto.create({
+      data: {
+        photoSessionId: sessionId,
+        dailyReportId: session.dailyReportId,
+        photoUrl: url,
+        caption,
+      }
+    })));
+    
+    return createdPhotos;
+  }
 }

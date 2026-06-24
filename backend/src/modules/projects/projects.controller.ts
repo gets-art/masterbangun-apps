@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -13,8 +13,8 @@ export class ProjectsController {
   constructor(private projectsService: ProjectsService) {}
 
   @Get()
-  findAll(@Request() req: any) {
-    return this.projectsService.findAll(req.user.id, req.user.role);
+  findAll(@Request() req: any, @Query('city') city?: string) {
+    return this.projectsService.findAll(req.user.id, req.user.role, city);
   }
 
   @Get(':id')
@@ -42,8 +42,23 @@ export class ProjectsController {
 
   @Roles(UserRole.ADMIN_PROYEK, UserRole.SUPER_ADMIN)
   @Post(':id/assign-tukang')
-  assignTukang(@Param('id') projectId: string, @Body('tukangId') tukangId: string) {
-    return this.projectsService.assignTukang(projectId, tukangId);
+  assignTukang(
+    @Param('id') projectId: string, 
+    @Body('tukangId') tukangId: string,
+    @Body('contractValue') contractValue?: number,
+    @Body('contractDesc') contractDesc?: string
+  ) {
+    return this.projectsService.assignTukang(projectId, tukangId, { contractValue, contractDesc });
+  }
+
+  @Roles(UserRole.PENGAWAS, UserRole.MANAGER, UserRole.SUPER_ADMIN, UserRole.ADMIN_PROYEK)
+  @Patch(':id/tukang/:tukangId/progress')
+  updateTukangProgress(
+    @Param('id') projectId: string,
+    @Param('tukangId') tukangId: string,
+    @Body('progressPercent') progressPercent: number
+  ) {
+    return this.projectsService.updateTukangProgress(projectId, tukangId, progressPercent);
   }
 
   @Get(':id/tukang')

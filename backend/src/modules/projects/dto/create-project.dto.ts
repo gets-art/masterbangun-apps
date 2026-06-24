@@ -10,6 +10,10 @@ export class CreateProjectDto {
 
   @IsOptional()
   @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
   gpsCoordinates?: string;
 
   @IsDateString()

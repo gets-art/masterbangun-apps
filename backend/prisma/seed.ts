@@ -93,6 +93,48 @@ async function main() {
     },
   });
 
+  // Arsitek
+  const arsitek = await prisma.user.upsert({
+    where: { email: 'arsitek@masterbangun.com' },
+    update: {},
+    create: {
+      name: 'Bina Karya (Arsitek)',
+      email: 'arsitek@masterbangun.com',
+      passwordHash: await bcrypt.hash('arsitek123', 10),
+      role: UserRole.ARSITEK,
+      phone: '08777777771',
+      language: Language.ID,
+    },
+  });
+
+  // Estimator
+  const estimator = await prisma.user.upsert({
+    where: { email: 'estimator@masterbangun.com' },
+    update: {},
+    create: {
+      name: 'Rudi Estimator',
+      email: 'estimator@masterbangun.com',
+      passwordHash: await bcrypt.hash('estimator123', 10),
+      role: UserRole.ESTIMATOR,
+      phone: '08777777772',
+      language: Language.ID,
+    },
+  });
+
+  // Drafter
+  const drafter = await prisma.user.upsert({
+    where: { email: 'drafter@masterbangun.com' },
+    update: {},
+    create: {
+      name: 'Dani Drafter',
+      email: 'drafter@masterbangun.com',
+      passwordHash: await bcrypt.hash('drafter123', 10),
+      role: UserRole.DRAFTER,
+      phone: '08777777773',
+      language: Language.ID,
+    },
+  });
+
   console.log('✅ Users created');
 
   // Sample Tukang
@@ -104,6 +146,8 @@ async function main() {
       name: 'Ahmad Fauzi',
       phone: '08611111111',
       skill: 'Bata & Plester',
+      type: 'HARIAN',
+      dailyRate: 150000,
     },
   });
 
@@ -115,6 +159,9 @@ async function main() {
       name: 'Dodi Prasetyo',
       phone: '08622222222',
       skill: 'Baja & Rangka',
+      type: 'BORONGAN',
+      contractValue: 5000000,
+      contractDesc: 'Pemasangan atap baja ringan 100m2',
     },
   });
 
@@ -126,6 +173,8 @@ async function main() {
       name: 'Eko Susanto',
       phone: '08633333333',
       skill: 'Finishing & Cat',
+      type: 'HARIAN',
+      dailyRate: 140000,
     },
   });
 
@@ -167,6 +216,12 @@ async function main() {
     create: { projectId: project.id, userId: konsumen.id },
   });
 
+  await prisma.projectUser.upsert({
+    where: { projectId_userId: { projectId: project.id, userId: arsitek.id } },
+    update: {},
+    create: { projectId: project.id, userId: arsitek.id },
+  });
+
   // Assign tukang to project
   for (const tukang of [tukang1, tukang2, tukang3]) {
     await prisma.projectTukang.upsert({
@@ -186,6 +241,9 @@ async function main() {
   console.log('Pengawas    : pengawas@masterbangun.com   / pengawas123');
   console.log('Mandor      : mandor@masterbangun.com     / mandor123');
   console.log('Konsumen    : konsumen@example.com        / konsumen123');
+  console.log('Arsitek     : arsitek@masterbangun.com    / arsitek123');
+  console.log('Estimator   : estimator@masterbangun.com  / estimator123');
+  console.log('Drafter     : drafter@masterbangun.com    / drafter123');
   console.log('=========================\n');
 }
 

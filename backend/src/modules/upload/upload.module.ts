@@ -20,10 +20,10 @@ import { existsSync, mkdirSync } from 'fs';
           cb(null, unique + extname(file.originalname));
         },
       }),
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
       fileFilter: (req, file, cb) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
-          return cb(new Error('Only image files are allowed'), false);
+        if (!file.originalname.match(/\.(jpg|jpeg|png|webp|pdf|dwg|docx|xlsx|doc|xls|rtf|txt)$/i)) {
+          return cb(new Error('File format not allowed'), false);
         }
         cb(null, true);
       },

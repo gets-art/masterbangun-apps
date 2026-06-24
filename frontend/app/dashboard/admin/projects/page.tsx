@@ -8,6 +8,7 @@ export default function AdminProjects() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
+  const [filterCity, setFilterCity] = useState('');
   
   // Manage Team Modal State
   const [manageProject, setManageProject] = useState<any>(null);
@@ -17,11 +18,15 @@ export default function AdminProjects() {
   const [projectUsers, setProjectUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedTukang, setSelectedTukang] = useState('');
+  const [contractValue, setContractValue] = useState('');
+  const [contractDesc, setContractDesc] = useState('');
   const [loadingManage, setLoadingManage] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     address: '',
+    city: '',
     startDate: new Date().toISOString().split('T')[0],
     status: 'ACTIVE',
     normalStartHour: '08:00',
@@ -33,7 +38,11 @@ export default function AdminProjects() {
     api.get('/projects').then(res => setProjects(res.data)).finally(() => setLoading(false));
   };
 
-  useEffect(() => loadProjects(), []);
+  useEffect(() => {
+    loadProjects();
+    const u = localStorage.getItem('user');
+    if (u) setCurrentUser(JSON.parse(u));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +50,7 @@ export default function AdminProjects() {
     try {
       await api.post('/projects', formData);
       setShowModal(false);
-      setFormData({ name: '', address: '', startDate: new Date().toISOString().split('T')[0], status: 'ACTIVE', normalStartHour: '08:00', normalEndHour: '17:00' });
+      setFormData({ name: '', address: '', city: '', startDate: new Date().toISOString().split('T')[0], status: 'ACTIVE', normalStartHour: '08:00', normalEndHour: '17:00' });
       loadProjects();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Gagal menambahkan proyek');
@@ -85,15 +94,36 @@ export default function AdminProjects() {
   const handleAssignTukang = async () => {
     if (!selectedTukang) return;
     try {
-      await api.post(`/projects/${manageProject.id}/assign-tukang`, { tukangId: selectedTukang });
+      await api.post(`/projects/${manageProject.id}/assign-tukang`, { 
+        tukangId: selectedTukang,
+        contractValue: contractValue ? Number(contractValue) : undefined,
+        contractDesc: contractDesc || undefined
+      });
       setSelectedTukang('');
+      setContractValue('');
+      setContractDesc('');
       openManageModal(manageProject); // reload data
     } catch (err: any) {
       alert(err.response?.data?.message || 'Gagal assign tukang');
     }
   };
 
-  const filtered = projects.filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.address.toLowerCase().includes(search.toLowerCase()));
+  const handleUpdateProgress = async (tukangId: string, progress: number) => {
+    try {
+      await api.patch(`/projects/${manageProject.id}/tukang/${tukangId}/progress`, { progressPercent: progress });
+      openManageModal(manageProject);
+    } catch (err: any) {
+      alert('Gagal update progres tukang');
+    }
+  };
+
+  const filtered = projects.filter(p => {
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.address.toLowerCase().includes(search.toLowerCase());
+    const matchCity = !filterCity || p.city === filterCity;
+    return matchSearch && matchCity;
+  });
+
+  const uniqueCities = Array.from(new Set(projects.map(p => p.city).filter(Boolean))) as string[];
 
   if (loading) return (
     <div>
@@ -111,7 +141,9 @@ export default function AdminProjects() {
           <div className="topbar-title">🏗️ Manajemen Proyek</div>
           <div className="topbar-sub">{projects.length} proyek terdaftar</div>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Tambah Proyek</button>
+        {['SUPER_ADMIN', 'ADMIN_PROYEK'].includes(currentUser?.role) && (
+          <button className="btn-primary" onClick={() => setShowModal(true)}>+ Proyek Baru</button>
+        )}
       </div>
 
       <div className="page-content">
@@ -130,11 +162,17 @@ export default function AdminProjects() {
 
         <div className="table-wrapper">
           <div className="table-header">
-            <div className="search-wrapper">
-              <span className="search-icon">🔍</span>
-              <input className="input" placeholder="Cari proyek..." value={search} onChange={e => setSearch(e.target.value)} />
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="search-wrapper">
+                <span className="search-icon">🔍</span>
+                <input className="input" placeholder="Cari proyek..." value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+              <select className="input" value={filterCity} onChange={e => setFilterCity(e.target.value)} style={{ width: 'auto' }}>
+                <option value="">Semua Kota</option>
+                {uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <span className="badge badge-info">{filtered.length} proyek</span>
             </div>
-            <span className="badge badge-info">{filtered.length} proyek</span>
           </div>
           <table>
             <thead>
@@ -151,7 +189,10 @@ export default function AdminProjects() {
               {filtered.map(p => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 600 }}>{p.name}</td>
-                  <td className="td-muted" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.address}</td>
+                  <td className="td-muted" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.address}
+                    {p.city && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{p.city}</div>}
+                  </td>
                   <td className="td-muted">{p.startDate ? new Date(p.startDate).toLocaleDateString('id-ID') : '-'}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -192,11 +233,15 @@ export default function AdminProjects() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Nama Proyek</label>
-                <input required type="text" className="input" placeholder="Contoh: Rumah Pak Budi — Depok" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input required className="input" placeholder="Misal: Pembangunan Villa A" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
               <div className="form-group">
-                <label className="form-label">Alamat Lokasi</label>
-                <textarea required className="input" placeholder="Alamat lengkap lokasi proyek..." value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                <label className="form-label">Alamat Lengkap</label>
+                <textarea required className="input" placeholder="Alamat proyek" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Kota</label>
+                <input required className="input" placeholder="Misal: Jakarta Selatan" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="form-group">
@@ -239,13 +284,18 @@ export default function AdminProjects() {
                 
                 {/* Section Assign User */}
                 <div style={{ background: '#1e212b', padding: 16, borderRadius: 8 }}>
-                  <h4 style={{ margin: '0 0 12px', color: '#f8fafc' }}>Staf & Pengurus (Mandor, Pengawas, dll)</h4>
+                  <h4 style={{ margin: '0 0 12px', color: '#f8fafc' }}>Staf, Pengurus & Konsumen</h4>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                     <select className="input" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
                       <option value="">Pilih User...</option>
                       {availableUsers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
                     </select>
-                    <button onClick={handleAssignUser} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Tambahkan</button>
+                    {['SUPER_ADMIN', 'ADMIN_PROYEK'].includes(currentUser?.role) && (
+                      <button onClick={handleAssignUser} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Tambahkan</button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+                    * Jika nama Konsumen/Staf tidak ada, daftarkan dulu di menu <b>Manajemen User</b>.
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {projectUsers.map((pu: any) => (
@@ -258,16 +308,38 @@ export default function AdminProjects() {
                 {/* Section Assign Tukang */}
                 <div style={{ background: '#1e212b', padding: 16, borderRadius: 8 }}>
                   <h4 style={{ margin: '0 0 12px', color: '#f8fafc' }}>Tukang Lapangan</h4>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                    <select className="input" value={selectedTukang} onChange={e => setSelectedTukang(e.target.value)}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                    <select className="input" value={selectedTukang} onChange={e => setSelectedTukang(e.target.value)} style={{ flex: 1, minWidth: 200 }}>
                       <option value="">Pilih Tukang...</option>
-                      {availableTukangs.map(t => <option key={t.id} value={t.id}>{t.name} ({t.specialty})</option>)}
+                      {availableTukangs.map(t => <option key={t.id} value={t.id}>{t.name} ({t.type || 'HARIAN'})</option>)}
                     </select>
-                    <button onClick={handleAssignTukang} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Tambahkan</button>
+                    {availableTukangs.find(t => t.id === selectedTukang)?.type === 'BORONGAN' && (
+                      <>
+                        <input className="input" type="number" placeholder="Nilai Kontrak (Rp)" value={contractValue} onChange={e => setContractValue(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
+                        <input className="input" placeholder="Deskripsi Kontrak" value={contractDesc} onChange={e => setContractDesc(e.target.value)} style={{ flex: 1, minWidth: 150 }} />
+                      </>
+                    )}
+                    {['SUPER_ADMIN', 'ADMIN_PROYEK'].includes(currentUser?.role) && (
+                      <button onClick={handleAssignTukang} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Tambahkan</button>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {projectTukangs.map((pt: any) => (
-                      <span key={pt.tukang.id} className="badge badge-success">{pt.tukang.name}</span>
+                      <div key={pt.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: 6 }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{pt.name}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{pt.type || 'HARIAN'} {pt.type === 'BORONGAN' && pt.contractValueProject && `— Kontrak: Rp ${pt.contractValueProject.toLocaleString('id-ID')}`}</div>
+                        </div>
+                        {pt.type === 'BORONGAN' && (
+                          <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
+                            Progres: {pt.progressPercent}%
+                            <button onClick={() => {
+                              const p = prompt('Masukkan progres baru (0-100)', String(pt.progressPercent));
+                              if (p !== null) handleUpdateProgress(pt.id, Number(p));
+                            }} style={{ marginLeft: 8, background: 'transparent', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: 4, cursor: 'pointer', padding: '2px 6px' }}>Update</button>
+                          </div>
+                        )}
+                      </div>
                     ))}
                     {projectTukangs.length === 0 && <span style={{ color: '#64748b', fontSize: 13 }}>Belum ada tukang</span>}
                   </div>

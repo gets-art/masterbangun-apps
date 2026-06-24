@@ -137,6 +137,9 @@ export default function LoginPage() {
             { role: 'Pengawas', email: 'pengawas@masterbangun.com', pass: 'pengawas123' },
             { role: 'Mandor', email: 'mandor@masterbangun.com', pass: 'mandor123' },
             { role: 'Konsumen', email: 'konsumen@example.com', pass: 'konsumen123' },
+            { role: 'Arsitek', email: 'arsitek@masterbangun.com', pass: 'arsitek123' },
+            { role: 'Estimator', email: 'estimator@masterbangun.com', pass: 'estimator123' },
+            { role: 'Drafter', email: 'drafter@masterbangun.com', pass: 'drafter123' },
           ].map((d) => (
             <button
               key={d.role}

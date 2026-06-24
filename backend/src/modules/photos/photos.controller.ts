@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { PhotosService } from './photos.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -32,5 +32,15 @@ export class PhotosController {
   @Delete(':id')
   softDelete(@Param('id') id: string, @Request() req: any) {
     return this.service.softDelete(id, req.user.id);
+  }
+
+  @Roles(UserRole.PENGAWAS)
+  @Post('session/:sessionId')
+  uploadToSession(
+    @Param('sessionId') sessionId: string,
+    @Body('photoUrls') photoUrls: string[],
+    @Body('caption') caption?: string
+  ) {
+    return this.service.uploadToSession(sessionId, photoUrls, caption);
   }
 }

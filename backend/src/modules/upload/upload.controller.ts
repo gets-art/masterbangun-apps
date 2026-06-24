@@ -13,4 +13,16 @@ export class UploadController {
   uploadPhoto(@UploadedFile() file: Express.Multer.File) {
     return { url: this.uploadService.getFileUrl(file.filename), filename: file.filename };
   }
+
+  @Post('document')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadDocument(@UploadedFile() file: Express.Multer.File) {
+    return { 
+      url: this.uploadService.getFileUrl(file.filename), 
+      filename: file.filename,
+      size: file.size,
+      mimetype: file.mimetype,
+      originalName: file.originalname
+    };
+  }
 }

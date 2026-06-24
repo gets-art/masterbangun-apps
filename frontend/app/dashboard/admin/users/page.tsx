@@ -10,19 +10,25 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'PENGAWAS', phone: '' });
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const loadUsers = () => {
     setLoading(true);
     api.get('/users').then(res => setUsers(res.data)).finally(() => setLoading(false));
   };
 
-  useEffect(() => loadUsers(), []);
+  useEffect(() => {
+    loadUsers();
+    const u = localStorage.getItem('user');
+    if (u) setCurrentUser(JSON.parse(u));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/users', formData);
+      const payload = { ...formData, phone: formData.phone || undefined };
+      await api.post('/users', payload);
       setShowModal(false);
       setFormData({ name: '', email: '', password: '', role: 'PENGAWAS', phone: '' });
       loadUsers();
@@ -55,6 +61,9 @@ export default function AdminUsers() {
     PENGAWAS: 'Pengawas',
     MANDOR: 'Mandor',
     KONSUMEN: 'Konsumen',
+    ARSITEK: 'Arsitek',
+    ESTIMATOR: 'Estimator',
+    DRAFTER: 'Drafter',
   };
 
   const roleBadgeClass: Record<string, string> = {
@@ -64,6 +73,9 @@ export default function AdminUsers() {
     PENGAWAS: 'badge-info',
     MANDOR: 'badge-success',
     KONSUMEN: 'badge-info',
+    ARSITEK: 'badge-primary',
+    ESTIMATOR: 'badge-success',
+    DRAFTER: 'badge-warning',
   };
 
   if (loading) return (
@@ -82,7 +94,9 @@ export default function AdminUsers() {
           <div className="topbar-title">👥 Kelola User</div>
           <div className="topbar-sub">{users.length} user terdaftar</div>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Tambah User</button>
+        {['SUPER_ADMIN', 'ADMIN_PROYEK'].includes(currentUser?.role) && (
+          <button className="btn-primary" onClick={() => setShowModal(true)}>+ Tambah User</button>
+        )}
       </div>
 
       <div className="page-content">
@@ -183,6 +197,9 @@ export default function AdminUsers() {
                   <option value="PENGAWAS">Pengawas Lapangan</option>
                   <option value="MANDOR">Mandor</option>
                   <option value="KONSUMEN">Konsumen / Pemilik</option>
+                  <option value="ARSITEK">Arsitek</option>
+                  <option value="ESTIMATOR">Estimator</option>
+                  <option value="DRAFTER">Drafter</option>
                 </select>
               </div>
               <div className="modal-actions">

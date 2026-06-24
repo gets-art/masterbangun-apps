@@ -188,8 +188,8 @@ export default function ManagerReports() {
               )}
             </div>
 
-            <strong style={{ color: '#94a3b8', display: 'block', marginBottom: 8, fontSize: 13 }}>Dokumentasi Foto ({selectedReport.photos?.length || 0}):</strong>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, maxHeight: 300, overflowY: 'auto', paddingRight: 4 }}>
+            <strong style={{ color: '#94a3b8', display: 'block', marginBottom: 8, fontSize: 13 }}>Dokumentasi Foto Awal ({selectedReport.photos?.length || 0}):</strong>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, maxHeight: 150, overflowY: 'auto', paddingRight: 4 }}>
               {selectedReport.photos && selectedReport.photos.length > 0 ? selectedReport.photos.map((p: any) => (
                 <div key={p.id} style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <img 
@@ -201,9 +201,32 @@ export default function ManagerReports() {
                   {p.caption && <div style={{ padding: '4px 8px', fontSize: 11, background: '#131722', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.caption}</div>}
                 </div>
               )) : (
-                <div style={{ gridColumn: '1 / -1', color: '#64748b', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Tidak ada foto terlampir</div>
+                <div style={{ gridColumn: '1 / -1', color: '#64748b', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Tidak ada foto awal terlampir</div>
               )}
             </div>
+
+            {selectedReport.photoSessions && selectedReport.photoSessions.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <strong style={{ color: '#94a3b8', display: 'block', marginBottom: 8, fontSize: 13 }}>Sesi Foto Tambahan ({selectedReport.photoSessions.length}):</strong>
+                <div style={{ maxHeight: 200, overflowY: 'auto', paddingRight: 4 }}>
+                  {selectedReport.photoSessions.map((s: any) => (
+                    <div key={s.id} style={{ marginBottom: 12, padding: 12, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{s.title || 'Sesi Tanpa Judul'}</div>
+                      {s.description && <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>{s.description}</div>}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+                        {s.photos?.map((p: any) => (
+                          <div key={p.id} style={{ position: 'relative' }}>
+                            <img src={getImageUrl(p.photoUrl)} style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }} alt="Foto sesi" />
+                            {p.caption && <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, padding: 2, textAlign: 'center', borderBottomLeftRadius: 4, borderBottomRightRadius: 4 }}>{p.caption}</div>}
+                          </div>
+                        ))}
+                        {(!s.photos || s.photos.length === 0) && <div style={{ fontSize: 12, color: '#64748b' }}>Belum ada foto</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="modal-actions">
               <button onClick={() => setSelectedReport(null)} className="btn-secondary">Tutup</button>

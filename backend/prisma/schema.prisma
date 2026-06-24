@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -14,6 +13,9 @@ enum UserRole {
   ADMIN_PROYEK
   MANDOR
   KONSUMEN
+  ARSITEK
+  ESTIMATOR
+  DRAFTER
 }
 
 enum ProjectStatus {
@@ -53,6 +55,26 @@ enum Language {
   EN
 }
 
+enum TukangType {
+  HARIAN
+  BORONGAN
+}
+
+enum FileCategory {
+  GAMBAR_ARSITEKTUR
+  GAMBAR_STRUKTUR
+  GAMBAR_MEP
+  GAMBAR_KERJA
+  DENAH
+  GAMBAR_3D
+  RAB
+  KONTRAK
+  INVOICE
+  LAPORAN
+  DOKUMEN_TEKNIS
+  LAINNYA
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -74,6 +96,10 @@ model User {
   deletedPhotos       ReportPhoto[]     @relation("DeletedByUser")
   approvedOvertime    Attendance[]      @relation("OvertimeApprover")
   auditLogs           AuditLog[]
+  uploadedDocuments   ProjectDocument[] @relation("UploadedDocuments")
+  documentComments    DocumentComment[] @relation("DocumentComments")
+  ProjectNote        ProjectNote[]     @relation("ProjectNotes")
+  RelatedDocuments   ProjectDocument[] @relation("RelatedUserDoc")
 
   @@map("users")
 }
@@ -82,6 +108,7 @@ model Project {
   id                 String        @id @default(uuid())
   name               String
   address            String
+  city               String?
   gpsCoordinates     String?       @map("gps_coordinates")
   startDate          DateTime      @map("start_date")
   estimatedEndDate   DateTime?     @map("estimated_end_date")
@@ -98,22 +125,29 @@ model Project {
   attendances      Attendance[]
   dailyReports     DailyReport[]
   materialRequests MaterialRequest[]
+  documents        ProjectDocument[]
+  projectNotes     ProjectNote[]
 
   @@map("projects")
 }
 
 model Tukang {
-  id        String   @id @default(uuid())
-  name      String
-  phone     String?
-  skill     String?
-  photoUrl  String?  @map("photo_url")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String     @id @default(uuid())
+  name         String
+  phone        String?
+  skill        String?
+  type         TukangType @default(HARIAN)
+  dailyRate    Float?     @map("daily_rate")
+  contractValue Float?    @map("contract_value")
+  contractDesc  String?   @map("contract_desc")
+  photoUrl     String?    @map("photo_url")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
   projectAssignments ProjectTukang[]
   attendances        Attendance[]
+  relatedDocuments   ProjectDocument[]
 
   @@map("tukang")
 }
@@ -132,11 +166,14 @@ model ProjectUser {
 }
 
 model ProjectTukang {
-  id           String   @id @default(uuid())
-  projectId    String   @map("project_id")
-  tukangId     String   @map("tukang_id")
-  assignedDate DateTime @default(now()) @map("assigned_date")
-  isActive     Boolean  @default(true) @map("is_active")
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  tukangId        String   @map("tukang_id")
+  assignedDate    DateTime @default(now()) @map("assigned_date")
+  isActive        Boolean  @default(true) @map("is_active")
+  contractValue   Float?   @map("contract_value")
+  contractDesc    String?  @map("contract_desc")
+  progressPercent Int?     @map("progress_percent")
 
   project Project @relation(fields: [projectId], references: [id])
   tukang  Tukang  @relation(fields: [tukangId], references: [id])
@@ -186,17 +223,32 @@ model DailyReport {
   createdAt            DateTime     @default(now()) @map("created_at")
   updatedAt            DateTime     @updatedAt @map("updated_at")
 
-  project  Project       @relation(fields: [projectId], references: [id])
-  pengawas User          @relation(fields: [pengawasId], references: [id])
-  photos   ReportPhoto[]
+  project       Project        @relation(fields: [projectId], references: [id])
+  pengawas      User           @relation(fields: [pengawasId], references: [id])
+  photoSessions PhotoSession[]
+  photos        ReportPhoto[]
 
   @@unique([projectId, reportDate])
   @@map("daily_reports")
 }
 
+model PhotoSession {
+  id            String   @id @default(uuid())
+  dailyReportId String   @map("daily_report_id")
+  title         String?
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  dailyReport DailyReport   @relation(fields: [dailyReportId], references: [id])
+  photos      ReportPhoto[]
+
+  @@map("photo_sessions")
+}
+
 model ReportPhoto {
   id                String    @id @default(uuid())
   dailyReportId     String    @map("daily_report_id")
+  photoSessionId    String?   @map("photo_session_id")
   photoUrl          String    @map("photo_url")
   caption           String?
   sharedToConsumer  Boolean   @default(false) @map("shared_to_consumer")
@@ -208,9 +260,10 @@ model ReportPhoto {
   deletedAt         DateTime? @map("deleted_at")
   createdAt         DateTime  @default(now()) @map("created_at")
 
-  dailyReport DailyReport @relation(fields: [dailyReportId], references: [id])
-  approver    User?       @relation("ApprovedByUser", fields: [approvedBy], references: [id])
-  deleter     User?       @relation("DeletedByUser", fields: [deletedBy], references: [id])
+  dailyReport  DailyReport   @relation(fields: [dailyReportId], references: [id])
+  photoSession PhotoSession? @relation(fields: [photoSessionId], references: [id])
+  approver     User?         @relation("ApprovedByUser", fields: [approvedBy], references: [id])
+  deleter      User?         @relation("DeletedByUser", fields: [deletedBy], references: [id])
 
   @@map("report_photos")
 }
@@ -234,6 +287,7 @@ model MaterialRequest {
   project  Project @relation(fields: [projectId], references: [id])
   mandor   User    @relation("MandorMaterial", fields: [mandorId], references: [id])
   approver User?   @relation("ApprovedByUser", fields: [approvedBy], references: [id])
+  documents ProjectDocument[]
 
   @@map("material_requests")
 }
@@ -251,4 +305,70 @@ model AuditLog {
   user User @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+model ProjectDocument {
+  id               String       @id @default(uuid())
+  projectId        String       @map("project_id")
+  uploadedBy       String       @map("uploaded_by")
+  fileName         String       @map("file_name")
+  fileUrl          String       @map("file_url")
+  fileSize         Int          @map("file_size")
+  fileType         String       @map("file_type")
+  category         FileCategory @default(LAINNYA)
+  version          Int          @default(1)
+  description      String?
+  isLatest         Boolean      @default(true) @map("is_latest")
+  sharedToConsumer Boolean      @default(false) @map("shared_to_consumer")
+  parentId         String?      @map("parent_id")
+  
+  // Associations for History
+  relatedUserId    String?      @map("related_user_id")
+  relatedTukangId  String?      @map("related_tukang_id")
+  materialReqId    String?      @map("material_req_id")
+
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  project         Project           @relation(fields: [projectId], references: [id])
+  uploader        User              @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
+  parent          ProjectDocument?  @relation("DocumentVersions", fields: [parentId], references: [id])
+  relatedUser     User?             @relation("RelatedUserDoc", fields: [relatedUserId], references: [id])
+  relatedTukang   Tukang?           @relation(fields: [relatedTukangId], references: [id])
+  materialRequest MaterialRequest?  @relation(fields: [materialReqId], references: [id])
+  
+  versions   ProjectDocument[] @relation("DocumentVersions")
+  comments   DocumentComment[]
+
+  @@map("project_documents")
+}
+
+model DocumentComment {
+  id          String   @id @default(uuid())
+  documentId  String   @map("document_id")
+  userId      String   @map("user_id")
+  content     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  document ProjectDocument @relation(fields: [documentId], references: [id])
+  user     User            @relation("DocumentComments", fields: [userId], references: [id])
+
+  @@map("document_comments")
+}
+
+model ProjectNote {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  title     String
+  content   String
+  isPinned  Boolean  @default(false) @map("is_pinned")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation("ProjectNotes", fields: [userId], references: [id])
+
+  @@map("project_notes")
 }

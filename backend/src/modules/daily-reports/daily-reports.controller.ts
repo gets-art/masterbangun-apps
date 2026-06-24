@@ -34,4 +34,19 @@ export class DailyReportsController {
   revision(@Param('id') id: string, @Body('notes') notes: string) {
     return this.service.requestRevision(id, notes);
   }
+
+  @Roles(UserRole.PENGAWAS)
+  @Post(':id/photo-sessions')
+  createPhotoSession(
+    @Param('id') id: string,
+    @Body('title') title?: string,
+    @Body('description') description?: string
+  ) {
+    return this.service.createPhotoSession(id, title, description);
+  }
+
+  @Get(':id/photo-sessions')
+  getPhotoSessions(@Param('id') id: string) {
+    return this.service.getPhotoSessions(id);
+  }
 }
