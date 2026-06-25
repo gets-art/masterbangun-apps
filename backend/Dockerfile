@@ -1,12 +1,16 @@
-FROM node:20-alpine
+FROM node:20
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm install
 
 COPY . .
+
+# Pass DATABASE_URL at build time for prisma generate
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL:-file:/app/prisma/data/masterbangun.db}
 
 RUN npx prisma generate
 RUN npm run build
@@ -18,4 +22,4 @@ RUN mkdir -p /app/prisma/data
 RUN mkdir -p /app/uploads
 
 # Startup script to push db schema and start prod server
-CMD npx prisma db push && npm run start:prod
+CMD ["node", "dist/src/main"]
