@@ -53,10 +53,15 @@ export default function AdminProjects() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        estimatedEndDate: formData.estimatedEndDate || null,
+        extensionNote: formData.extensionNote || null,
+      };
       if (isEditing) {
-        await api.patch(`/projects/${editId}`, formData);
+        await api.patch(`/projects/${editId}`, payload);
       } else {
-        await api.post('/projects', formData);
+        await api.post('/projects', payload);
       }
       setShowModal(false);
       setFormData({ name: '', address: '', city: '', startDate: new Date().toISOString().split('T')[0], estimatedEndDate: '', extensionNote: '', status: 'ACTIVE', normalStartHour: '08:00', normalEndHour: '17:00' });

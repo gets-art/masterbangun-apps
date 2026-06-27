@@ -162,7 +162,7 @@ export default function DocumentsPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const uploadRes = await api.post('/upload', formData, {
+      const uploadRes = await api.post('/upload/document', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -174,9 +174,9 @@ export default function DocumentsPage() {
         fileType: file.type || file.name.split('.').pop() || 'unknown',
         category: uploadData.category,
         description: uploadData.notes,
-        relatedUserId: uploadData.relatedUserId || undefined,
-        relatedTukangId: uploadData.relatedTukangId || undefined,
-        materialReqId: uploadData.materialReqId || undefined,
+        relatedUserId: uploadData.relatedUserId || null,
+        relatedTukangId: uploadData.relatedTukangId || null,
+        materialReqId: uploadData.materialReqId || null,
       };
 
       if (uploadData.parentId) {
@@ -340,7 +340,7 @@ export default function DocumentsPage() {
                         </button>
                         {!d.isArchived && (
                           <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => {
-                            setUploadData({ title: d.title, category: d.category, notes: '', parentId: d.id, relatedUserId: '', relatedTukangId: '', materialReqId: '' });
+                            setUploadData({ title: d.fileName, category: d.category, notes: '', parentId: d.id, relatedUserId: '', relatedTukangId: '', materialReqId: '' });
                             setShowUpload(true);
                           }}>
                             + Versi Baru

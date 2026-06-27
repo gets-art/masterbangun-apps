@@ -9,6 +9,7 @@ export default function MandorDashboard() {
   const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const user = getUser();
 
   useEffect(() => {
@@ -21,7 +22,8 @@ export default function MandorDashboard() {
           setSelectedProject(pid);
           fetchTodayAttendance(pid);
         }
-      });
+      }).catch(err => console.error(err))
+        .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -40,6 +42,8 @@ export default function MandorDashboard() {
   const pendingMaterials = materials.filter(m => m.status === 'PENDING').length;
   const clockedIn = todayAttendance.filter(a => a.clockIn).length;
   const clockedOut = todayAttendance.filter(a => a.clockOut).length;
+
+  if (loading) return <div style={{ padding: 32, color: '#64748b' }}>Memuat data...</div>;
 
   return (
     <div>

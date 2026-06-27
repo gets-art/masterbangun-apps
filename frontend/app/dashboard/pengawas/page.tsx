@@ -7,6 +7,7 @@ export default function PengawasDashboard() {
   const [projects, setProjects] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const user = getUser();
 
   useEffect(() => {
@@ -18,13 +19,16 @@ export default function PengawasDashboard() {
       setProjects(p.data);
       setReports(r.data);
       setMaterials(m.data);
-    });
+    }).catch(err => console.error(err))
+      .finally(() => setLoading(false));
   }, []);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayReports = reports.filter(r => r.reportDate === todayStr);
   const pendingReports = reports.filter(r => r.status === 'SUBMITTED');
   const pendingMaterials = materials.filter(m => m.status === 'PENDING');
+
+  if (loading) return <div style={{ padding: 32, color: '#64748b' }}>Memuat data...</div>;
 
   return (
     <div>

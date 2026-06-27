@@ -31,7 +31,7 @@ export default function MandorAttendance() {
   const fetchTukangs = async (projectId: string) => {
     try {
       const res = await api.get(`/projects/${projectId}/tukang`);
-      setTukangs(res.data.map((t: any) => t.tukang));
+      setTukangs(res.data);
     } catch (e) {
       console.error(e);
     }
@@ -112,7 +112,7 @@ export default function MandorAttendance() {
             <tbody>
               {attendance.map(a => (
                 <tr key={a.id}>
-                  <td>{new Date(a.date).toLocaleDateString('id-ID')}</td>
+                  <td>{new Date(a.attendanceDate).toLocaleDateString('id-ID')}</td>
                   <td style={{ fontWeight: 500 }}>{a.tukang?.name}</td>
                   <td>{a.clockIn ? new Date(a.clockIn).toLocaleTimeString('id-ID') : '-'}</td>
                   <td>{a.clockOut ? new Date(a.clockOut).toLocaleTimeString('id-ID') : '-'}</td>
