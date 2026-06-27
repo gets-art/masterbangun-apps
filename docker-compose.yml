@@ -5,6 +5,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=${DATABASE_URL}
     container_name: masterbangun_backend
     ports:
       - "3000:3000"
@@ -12,6 +14,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=file:/app/prisma/data/masterbangun.db
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - masterbangun_db:/app/prisma/data
       - masterbangun_uploads:/app/uploads

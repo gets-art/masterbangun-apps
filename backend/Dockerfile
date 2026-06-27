@@ -21,5 +21,5 @@ EXPOSE 3000
 RUN mkdir -p /app/prisma/data
 RUN mkdir -p /app/uploads
 
-# Startup script to push db schema and start prod server
+# Startup script to start prod server
 CMD ["node", "dist/src/main"]
